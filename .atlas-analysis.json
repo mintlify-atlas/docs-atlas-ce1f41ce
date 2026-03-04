@@ -1,0 +1,99 @@
+{
+  "projectType": "frontend",
+  "projectName": "Jowy Portfolio",
+  "projectDescription": "An immersive portfolio website for DJ, Producer and Sound Designer with automated API integrations.",
+  "theme": "almond",
+  "primaryColor": "#fbd45e",
+  "lightColor": "#e8dcb5",
+  "darkColor": "#e3ece8",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "installation"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": ["architecture/overview", "architecture/project-structure", "architecture/routing"]
+          },
+          {
+            "group": "Configuration",
+            "pages": ["configuration/environment", "configuration/i18n", "configuration/astro-config"]
+          }
+        ]
+      },
+      {
+        "tab": "Components",
+        "groups": [
+          {
+            "group": "UI Components",
+            "pages": ["components/carousel", "components/modal", "components/theme-button", "components/vertical-marquee"]
+          },
+          {
+            "group": "Media Components",
+            "pages": ["components/soundcloud-player", "components/youtube-player", "components/privacy-embed"]
+          },
+          {
+            "group": "Navigation",
+            "pages": ["components/nav-photo", "components/lang-switcher", "components/social-networks"]
+          }
+        ]
+      },
+      {
+        "tab": "API Integration",
+        "groups": [
+          {
+            "group": "Core Systems",
+            "pages": ["api/base-fetcher", "api/caching", "api/error-handling"]
+          },
+          {
+            "group": "Services",
+            "pages": ["api/spotify", "api/soundcloud", "api/youtube"]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": ["guides/api-setup", "guides/deployment", "guides/ci-cd"]
+          },
+          {
+            "group": "Styling",
+            "pages": ["guides/theming", "guides/tailwind", "guides/animations"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multi-API integration with Spotify, SoundCloud, and YouTube",
+    "Server-side caching system for optimized API calls",
+    "Internationalization support (Spanish/English)",
+    "Dark mode with custom neon aesthetics",
+    "Automated CI/CD weekly rebuilds",
+    "BaseFetcher abstraction for consistent error handling",
+    "Responsive UI with Astro and TailwindCSS",
+    "Custom visual effects (gradient masks, scroll animations)"
+  ],
+  "publicApiSurface": [
+    "baseFetcher<T>(url, options)",
+    "getSpotifyToken()",
+    "getArtistTopTracks()",
+    "soundCloudApi.tracks.getFromUser()",
+    "soundCloudApi.users.getInfo()",
+    "getFromCache<T>(key)",
+    "setInCache<T>(key, data, duration)",
+    "Carousel.astro",
+    "Modal.astro",
+    "SoundCloudPlayer.astro",
+    "YouTubePlayer.astro",
+    "ThemeButton.astro",
+    "VerticalMarquee.astro",
+    "LangSwitcher.astro"
+  ]
+}
