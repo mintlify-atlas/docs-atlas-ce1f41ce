@@ -1,0 +1,217 @@
+---
+title: "Dark Mode & Theming"
+description: "Implement and customize the dark mode theme system with persistent user preferences and smooth transitions"
+---
+
+## Overview
+
+Jowy Portfolio features a sophisticated theming system with dark mode support, persistent user preferences via localStorage, and smooth color transitions. The implementation uses a custom theme toggle button with animated icon transitions.
+
+## Theme Configuration
+
+The theme system is built on CSS custom properties defined in `src/styles/global.css`:
+
+```css
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #f7a009;
+  --color-primary-dark: #000000;
+  --color-text: #000000;
+  --color-text-dark: #ffffff;
+}
+```
+
+These CSS variables are automatically applied based on the `.dark` class on the document root.
+
+## Theme Management
+
+The core theme logic is in `src/theme/theme.ts`:
+
+```typescript
+import { darkIcon, lightIcon } from "@/constants/icons";
+import { type Theme } from "@/types/theme.d";
+
+export const THEME_ICONS: Record<Theme, ImageMetadata> = {
+  light: darkIcon,  // Shows dark icon when in light mode
+  dark: lightIcon,  // Shows light icon when in dark mode
+} as const;
+
+export function getCurrentTheme(): Theme {
+  const storedTheme = localStorage.getItem("theme") as Theme | null;
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+  let currentTheme: Theme =
+    storedTheme ??
+    (prefersDark
+      ? "dark"
+      : document.documentElement.classList.contains("dark")
+        ? "dark"
+        : "light");
+
+  return currentTheme;
+}
+
+export const updateTheme = (theme: Theme) => {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.setAttribute(
+    "data-theme",
+    theme === "dark" ? "github-dark-default" : "github-light-default"
+  );
+  localStorage.setItem("theme", theme);
+
+  // Emit global event for components to listen
+  window.dispatchEvent(new CustomEvent("themechange", { detail: theme }));
+};
+```
+
+<Note>
+The theme preference is automatically detected from `prefers-color-scheme` if no stored preference exists, providing a seamless experience for users.
+</Note>
+
+## Theme Toggle Component
+
+The `ThemeButton.astro` component provides an interactive toggle with smooth icon transitions:
+
+```astro
+---
+import { Image } from "astro:assets";
+import { darkIcon } from "@/constants/icons";
+
+interface ThemeButtonProps {
+  className?: string;
+}
+
+const { className = "fixed top-3 right-3 cursor-pointer rounded p-2" } =
+  Astro.props as ThemeButtonProps;
+---
+
+<button
+  id="theme-toggle"
+  class=`${className} transition duration-300 ease-in-out hover:scale-120 z-9999`
+>
+  <Image
+    id="theme-toggle-icon"
+    alt="Dark Icon"
+    src={darkIcon}
+    class="h-[2vw] max-h-6 min-h-5 w-auto transition-opacity duration-500 ease-in-out"
+    loading="eager"
+    fetchpriority="high"
+    format="svg"
+  />
+</button>
+
+<script>
+  import { THEME_ICONS, getCurrentTheme, updateTheme } from "@/theme/theme"
+
+  const toggleButton = document.getElementById("theme-toggle") as HTMLButtonElement;
+  const icon = document.getElementById("theme-toggle-icon") as HTMLImageElement;
+
+  icon.src = THEME_ICONS[getCurrentTheme()].src;
+
+  toggleButton.addEventListener("click", () => {
+    // Fade out current icon
+    icon.style.opacity = "0";
+
+    const currentTheme = getCurrentTheme() === "dark" ? "light" : "dark";
+    updateTheme(currentTheme);
+
+    // Fade in new icon after 200ms
+    setTimeout(() => {
+      icon.src = THEME_ICONS[currentTheme].src;
+      icon.alt = currentTheme + " theme icon"
+      icon.style.opacity = "1";
+    }, 200);
+  });
+</script>
+```
+
+<Accordion title="How the icon transition works">
+  The theme toggle uses a fade effect:
+  1. Current icon opacity fades to 0 (200ms)
+  2. Icon source is swapped during fade
+  3. New icon fades back to opacity 1 (500ms)
+  
+  This creates a smooth crossfade effect without requiring multiple DOM elements.
+</Accordion>
+
+## Initial Theme Setup
+
+In `BaseLayout.astro`, the theme is initialized before the page renders to prevent flash of unstyled content (FOUC):
+
+```html
+<script is:inline>
+  (function () {
+    const html = document.documentElement;
+    html.classList.add("dark");
+    html.setAttribute("data-theme", "github-dark-default");
+  })();  
+</script>
+```
+
+<Warning>
+This inline script runs **before** the DOM is fully parsed, ensuring the dark theme is applied immediately. The portfolio defaults to dark mode on first visit.
+</Warning>
+
+## Body Styling
+
+The body element includes smooth theme transitions:
+
+```html
+<body
+  class="overflow-y-auto bg-primary-dark font-sans text-text-dark 
+         transition-colors duration-500 ease-in-out"
+  transition:animate="fade"
+>
+  <slot />
+</body>
+```
+
+The `transition-colors duration-500` ensures smooth color changes when toggling themes.
+
+## Listening to Theme Changes
+
+Other components can listen for theme changes using the custom event:
+
+```javascript
+window.addEventListener('themechange', (e) => {
+  const newTheme = e.detail; // 'light' or 'dark'
+  // Update component state
+});
+```
+
+## DaisyUI Theme Integration
+
+The project uses DaisyUI with GitHub themes configured via the `data-theme` attribute:
+
+<Tabs>
+  <Tab title="Dark Theme">
+    ```html
+    <html class="dark" data-theme="github-dark-default">
+    ```
+    Applied when user selects dark mode
+  </Tab>
+  <Tab title="Light Theme">
+    ```html
+    <html data-theme="github-light-default">
+    ```
+    Applied when user selects light mode
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Prevent FOUC" icon="bolt">
+    Always set initial theme in an inline script in the `<head>` before stylesheets load
+  </Card>
+  <Card title="Persist Preferences" icon="database">
+    Store theme choice in localStorage to remember user preference across sessions
+  </Card>
+  <Card title="Respect System Settings" icon="desktop">
+    Fall back to `prefers-color-scheme` when no stored preference exists
+  </Card>
+  <Card title="Smooth Transitions" icon="wand-magic-sparkles">
+    Use CSS transitions on color properties for smooth theme switching
+  </Card>
+</CardGroup>

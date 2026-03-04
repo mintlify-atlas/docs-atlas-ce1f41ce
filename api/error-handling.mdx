@@ -1,0 +1,219 @@
+---
+title: "Error Handling"
+description: "Custom error types for API and network failures with typed error handling patterns"
+---
+
+## Overview
+
+The error handling system provides two specialized error classes that extend the native `Error` class, enabling precise error handling and debugging for API operations.
+
+## Error Types
+
+### ApiError
+
+Thrown when the server responds with an HTTP error status (4xx or 5xx).
+
+```typescript
+export class ApiError extends Error {
+  public status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+```
+
+#### Properties
+
+<ParamField path="message" type="string">
+  Human-readable error message, extracted from the response body or HTTP status text
+</ParamField>
+
+<ParamField path="status" type="number">
+  HTTP status code (e.g., 404, 500)
+</ParamField>
+
+<ParamField path="name" type="string">
+  Always set to `"ApiError"` for error identification
+</ParamField>
+
+### NetworkError
+
+Thrown when a network-level failure occurs before receiving a response from the server.
+
+```typescript
+export class NetworkError extends Error {
+  constructor(message = 'Error de conexión de red o timeout.') {
+    super(message);
+    this.name = 'NetworkError';
+    Object.setPrototypeOf(this, NetworkError.prototype);
+  }
+}
+```
+
+#### Properties
+
+<ParamField path="message" type="string">
+  Defaults to `"Error de conexión de red o timeout."` but can be customized
+</ParamField>
+
+<ParamField path="name" type="string">
+  Always set to `"NetworkError"` for error identification
+</ParamField>
+
+<Note>
+  NetworkError is thrown for TypeErrors, network failures, CORS issues, and timeouts - any error that occurs before receiving an HTTP response.
+</Note>
+
+## Error Handling Patterns
+
+### Basic Try-Catch
+
+```typescript
+import { baseFetcher } from '@/lib/BaseFetcher';
+import { ApiError, NetworkError } from '@/lib/ErrorTypes';
+
+try {
+  const data = await baseFetcher<ResponseType>('/api/endpoint');
+  // Handle success
+} catch (error) {
+  if (error instanceof ApiError) {
+    // Handle API errors (4xx, 5xx)
+    console.error(`API Error ${error.status}: ${error.message}`);
+  } else if (error instanceof NetworkError) {
+    // Handle network failures
+    console.error('Network error:', error.message);
+  }
+}
+```
+
+### Status-Specific Handling
+
+```typescript
+try {
+  const user = await baseFetcher<User>(`/api/users/${id}`);
+} catch (error) {
+  if (error instanceof ApiError) {
+    switch (error.status) {
+      case 404:
+        return null; // User not found
+      case 401:
+        redirectToLogin();
+        break;
+      case 429:
+        await retryWithBackoff();
+        break;
+      default:
+        showErrorNotification(error.message);
+    }
+  } else if (error instanceof NetworkError) {
+    showOfflineMessage();
+  }
+}
+```
+
+### React Component Error Handling
+
+```typescript
+import { useState, useEffect } from 'react';
+import { ApiError, NetworkError } from '@/lib/ErrorTypes';
+
+function UserProfile({ userId }: { userId: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const user = await baseFetcher<User>(`/api/users/${userId}`);
+        // Update state with user data
+      } catch (err) {
+        if (err instanceof ApiError) {
+          setError(`Failed to load user: ${err.message}`);
+        } else if (err instanceof NetworkError) {
+          setIsOffline(true);
+        }
+      }
+    }
+    loadUser();
+  }, [userId]);
+
+  if (isOffline) return <OfflineBanner />;
+  if (error) return <ErrorMessage>{error}</ErrorMessage>;
+  // Render user data
+}
+```
+
+### Server Action Error Handling
+
+```typescript
+'use server';
+
+import { baseFetcher } from '@/lib/BaseFetcher';
+import { ApiError, NetworkError } from '@/lib/ErrorTypes';
+
+export async function fetchUserData(id: string) {
+  try {
+    const user = await baseFetcher<User>(`/api/users/${id}`);
+    return { success: true, data: user };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        error: `API Error ${error.status}: ${error.message}`,
+        statusCode: error.status,
+      };
+    } else if (error instanceof NetworkError) {
+      return {
+        success: false,
+        error: 'Network connection failed',
+        statusCode: 0,
+      };
+    }
+    return { success: false, error: 'Unknown error' };
+  }
+}
+```
+
+## Prototype Chain Correction
+
+Both error classes use `Object.setPrototypeOf()` to ensure `instanceof` checks work correctly:
+
+```typescript
+Object.setPrototypeOf(this, ApiError.prototype);
+```
+
+<Note>
+  This is necessary when extending built-in classes like Error in TypeScript, as the transpiled code may break the prototype chain.
+</Note>
+
+## Integration with BaseFetcher
+
+The [BaseFetcher](/api/base-fetcher) automatically throws these errors:
+
+```typescript
+// HTTP errors (4xx, 5xx)
+throw new ApiError(errorMessage, response.status);
+
+// Network failures
+if (error instanceof ApiError) {
+  throw error; // Re-throw API errors
+}
+throw new NetworkError(); // Wrap network errors
+```
+
+## Best Practices
+
+1. **Always check error types** - Use `instanceof` to distinguish between ApiError and NetworkError
+2. **Handle specific status codes** - React differently to 404 vs 500 errors
+3. **Provide user feedback** - Show appropriate messages for different error types
+4. **Log errors** - Send ApiErrors with status codes to error tracking services
+5. **Implement retry logic** - NetworkErrors may be transient and worth retrying
+
+## Related
+
+- [BaseFetcher](/api/base-fetcher) - HTTP fetcher using these error types
+- [Caching](/api/caching) - Cache patterns that handle errors

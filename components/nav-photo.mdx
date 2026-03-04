@@ -1,0 +1,143 @@
+---
+title: NavPhoto
+description: Responsive image component for navigation sections with hover effects and grayscale animations
+---
+
+## Overview
+
+The `NavPhoto` component is a specialized image wrapper designed for navigation sections in the Jowy Portfolio. It displays images with grayscale effects that transition to full color on hover, along with a subtle zoom animation. The component uses Astro's optimized Image component for responsive loading.
+
+## Props
+
+<ParamField path="image" type="any" required>
+  Image asset imported via Astro's asset system. This should be an `ImageMetadata` object imported from the assets directory.
+</ParamField>
+
+<ParamField path="className" type="string" default="">
+  Additional CSS classes to apply to the image. Often used for mask effects and positioning.
+</ParamField>
+
+<ParamField path="altImage" type="string" default="">
+  Alternative text for the image for accessibility purposes.
+</ParamField>
+
+## Component Behavior
+
+### Visual Effects
+
+- **Grayscale Filter**: Images are displayed in grayscale by default
+- **Hover Animation**: On hover, the image transitions to full color and scales up by 110%
+- **Smooth Transitions**: All effects use a 500ms ease-in-out transition
+- **Responsive Sizing**: Images are optimized with multiple widths (360px, 720px, 1000px)
+
+### Image Optimization
+
+The component automatically:
+- Generates WebP format for better compression
+- Creates responsive image sizes
+- Sets eager loading with high fetch priority
+- Maintains object-bottom positioning for proper alignment
+
+## Usage
+
+### Basic Usage
+
+```astro
+---
+import NavPhoto from '@/components/NavPhoto.astro';
+import djImage from '@/assets/images/dj-photo.jpg';
+---
+
+<NavPhoto 
+  image={djImage}
+  altImage="DJ Performance Photo"
+/>
+```
+
+### With Custom Classes and Masks
+
+```astro
+---
+import NavPhoto from '@/components/NavPhoto.astro';
+import producerImage from '@/assets/images/producer.jpg';
+---
+
+<NavPhoto 
+  image={producerImage}
+  className="mt-auto mask-fade-diagonal"
+  altImage="Music Producer in Studio"
+/>
+```
+
+### Inside NavPhotoSection
+
+The component is typically used within `NavPhotoSection` for the home page navigation:
+
+```astro
+---
+import NavPhoto from '@/components/NavPhoto.astro';
+import soundImage from '@/assets/images/sound-engineer.jpg';
+
+const mask = "mask-fade-diagonal";
+const extraClass = "additional-styles";
+---
+
+<div class="group relative">
+  <NavPhoto
+    image={soundImage}
+    altImage="Sound Engineer"
+    className={`mt-auto ${mask} ${extraClass}`}
+  />
+</div>
+```
+
+## Integration with NavPhotoSection
+
+This component is designed to work seamlessly with `NavPhotoSection.astro`, which wraps it in a clickable navigation card with:
+
+- Colored overlay triangles
+- Section titles with neon effects
+- Hover animations that coordinate with the photo effects
+- Routing to different portfolio sections
+
+Source: `/home/daytona/workspace/source/src/components/NavPhoto.astro:1`
+
+## Technical Details
+
+### Container Structure
+
+The component uses a flex container with:
+- Full height (`h-full`)
+- Bottom alignment (`items-end`)
+- Center justification (`justify-center`)
+- Hidden overflow to contain scaling effects
+
+### Responsive Images
+
+```astro
+widths={[360, 720, 1000]}
+sizes="(max-width: 768px) 100vw, 50vw"
+loading="eager"
+fetchpriority="high"
+format="webp"
+```
+
+This configuration ensures:
+- Mobile devices get appropriately sized images
+- Desktop displays use larger variants
+- Images load immediately for better UX
+- Modern WebP format reduces file sizes
+
+### CSS Classes Breakdown
+
+- `pb-0`: No bottom padding
+- `w-auto`: Auto width based on aspect ratio
+- `object-bottom`: Anchors image to bottom of container
+- `grayscale`: Initial grayscale filter
+- `transition-all duration-500 ease-in-out`: Smooth animation timing
+- `group-hover:scale-110`: Zoom effect on parent hover
+- `group-hover:grayscale-0`: Remove grayscale on parent hover
+
+## Styling Notes
+
+The component relies on the `group` class being present on a parent element for hover effects to work properly. This is automatically handled when used within `NavPhotoSection`.

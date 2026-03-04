@@ -1,0 +1,378 @@
+---
+title: Astro Configuration
+description: Configure site settings, integrations, server options, and Vite plugins
+---
+
+## Overview
+
+The Astro configuration file (`astro.config.mjs`) defines core settings for the Jowy Portfolio application, including site URL, development server options, integrations, and build configuration.
+
+## Configuration File
+
+The complete configuration is located at the project root:
+
+```javascript
+// @ts-check
+import { defineConfig } from "astro/config";
+import tailwindcss from "@tailwindcss/vite";
+import sitemap from "@astrojs/sitemap";
+import compress from "astro-compress";
+import { defaultLang, locales } from "./i18n.config";
+
+// https://astro.build/config
+export default defineConfig({
+  site: "https://jowy-portfolio.vercel.app/", // cambia a tu dominio
+  vite: {
+    plugins: [tailwindcss()],
+  },
+  server: {
+    host: true, // Establece el host en '0.0.0.0'
+    port: 4321,
+  },
+
+  integrations: [sitemap(), compress()],
+
+  i18n: {
+    defaultLocale: defaultLang,
+    locales: locales,
+    routing: {
+      prefixDefaultLocale: false,
+      redirectToDefaultLocale: true,
+    },
+  },
+});
+```
+
+## Site Configuration
+
+<ParamField path="site" type="string" default='"https://jowy-portfolio.vercel.app/"'>
+  The production URL of your deployed site. This is used for:
+  - Generating absolute URLs in sitemaps
+  - Canonical URLs for SEO
+  - Social media meta tags
+  
+  <Warning>
+  Update this to your actual domain before deploying to production.
+  </Warning>
+</ParamField>
+
+### Example: Update Site URL
+
+```javascript
+export default defineConfig({
+  site: "https://your-domain.com/",
+  // ... rest of config
+});
+```
+
+## Vite Configuration
+
+<ParamField path="vite.plugins" type="Plugin[]">
+  Array of Vite plugins. Jowy Portfolio uses the Tailwind CSS Vite plugin for styling.
+</ParamField>
+
+```javascript
+vite: {
+  plugins: [tailwindcss()],
+}
+```
+
+<Note>
+The `@tailwindcss/vite` plugin integrates Tailwind CSS v4 directly into the Vite build pipeline, providing faster builds and hot module replacement.
+</Note>
+
+### Adding Vite Plugins
+
+To add additional Vite plugins:
+
+```javascript
+import { defineConfig } from "astro/config";
+import tailwindcss from "@tailwindcss/vite";
+import myPlugin from "vite-plugin-example";
+
+export default defineConfig({
+  vite: {
+    plugins: [
+      tailwindcss(),
+      myPlugin(),
+    ],
+  },
+});
+```
+
+## Server Configuration
+
+<ParamField path="server.host" type="boolean | string" default={true}>
+  When set to `true`, the dev server listens on `0.0.0.0`, making it accessible from other devices on your network. Useful for testing on mobile devices.
+</ParamField>
+
+<ParamField path="server.port" type="number" default={4321}>
+  The port number for the development server. Default is `4321`.
+</ParamField>
+
+```javascript
+server: {
+  host: true, // Listens on 0.0.0.0
+  port: 4321,
+}
+```
+
+### Accessing Dev Server on Network
+
+With `host: true`, you can access your dev server from other devices:
+
+```
+Local:    http://localhost:4321
+Network:  http://192.168.1.x:4321
+```
+
+<Note>
+The network address will be displayed in your terminal when you start the dev server.
+</Note>
+
+### Custom Port
+
+To change the development server port:
+
+```javascript
+server: {
+  host: true,
+  port: 3000, // Use port 3000 instead
+}
+```
+
+## Integrations
+
+Jowy Portfolio includes two official Astro integrations:
+
+<ParamField path="integrations" type="AstroIntegration[]">
+  Array of Astro integrations to enable additional functionality.
+</ParamField>
+
+### Sitemap Integration
+
+```javascript
+import sitemap from "@astrojs/sitemap";
+
+export default defineConfig({
+  integrations: [sitemap()],
+});
+```
+
+Automatically generates a `sitemap.xml` file for your site based on the `site` configuration.
+
+**Benefits:**
+- Improves SEO by helping search engines discover all pages
+- Automatically updates when you add/remove pages
+- Respects i18n configuration for multi-language URLs
+
+<Accordion title="Sitemap Configuration Options">
+  ```javascript
+  sitemap({
+    filter: (page) => !page.includes('/admin/'),
+    customPages: ['https://your-domain.com/external-page'],
+    changefreq: 'weekly',
+    priority: 0.7,
+    lastmod: new Date(),
+  })
+  ```
+</Accordion>
+
+### Compress Integration
+
+```javascript
+import compress from "astro-compress";
+
+export default defineConfig({
+  integrations: [compress()],
+});
+```
+
+Compresses HTML, CSS, and JavaScript files during the build process.
+
+**Benefits:**
+- Reduces file sizes for faster page loads
+- Minifies HTML, CSS, and JavaScript
+- Improves Core Web Vitals scores
+- Reduces bandwidth usage
+
+<Accordion title="Compress Configuration Options">
+  ```javascript
+  compress({
+    CSS: true,
+    HTML: true,
+    Image: false,
+    JavaScript: true,
+    SVG: true,
+  })
+  ```
+</Accordion>
+
+### Adding More Integrations
+
+To add additional integrations:
+
+1. Install the integration:
+
+```bash
+npm install @astrojs/integration-name
+```
+
+2. Import and add to config:
+
+```javascript
+import newIntegration from "@astrojs/integration-name";
+
+export default defineConfig({
+  integrations: [
+    sitemap(),
+    compress(),
+    newIntegration(),
+  ],
+});
+```
+
+## Internationalization (i18n)
+
+<ParamField path="i18n" type="object">
+  Configuration for Astro's built-in i18n routing support.
+</ParamField>
+
+```javascript
+import { defaultLang, locales } from "./i18n.config";
+
+export default defineConfig({
+  i18n: {
+    defaultLocale: defaultLang,     // "es"
+    locales: locales,                // ["es", "en"]
+    routing: {
+      prefixDefaultLocale: false,
+      redirectToDefaultLocale: true,
+    },
+  },
+});
+```
+
+The i18n configuration is imported from `i18n.config.ts` for centralized language management.
+
+<Note>
+For detailed i18n configuration, see the [Internationalization guide](/configuration/i18n).
+</Note>
+
+## TypeScript Configuration
+
+The `// @ts-check` comment at the top of the file enables TypeScript checking for JavaScript files:
+
+```javascript
+// @ts-check
+import { defineConfig } from "astro/config";
+```
+
+This provides:
+- Type checking for configuration options
+- IntelliSense in compatible editors
+- Catches configuration errors before runtime
+
+## Build Configuration
+
+Astro's default build settings are used, which:
+
+- Outputs to `dist/` directory
+- Generates static HTML files
+- Optimizes assets automatically
+- Creates a production-ready build
+
+### Custom Build Output
+
+To customize the build output directory:
+
+```javascript
+export default defineConfig({
+  outDir: './build',
+  // ... rest of config
+});
+```
+
+## Environment-Specific Configuration
+
+You can create different configurations for development and production:
+
+```javascript
+import { defineConfig } from "astro/config";
+
+const isDev = import.meta.env.DEV;
+
+export default defineConfig({
+  site: isDev 
+    ? "http://localhost:4321" 
+    : "https://jowy-portfolio.vercel.app/",
+  // ... rest of config
+});
+```
+
+## Common Configuration Tasks
+
+### Change Development Port
+
+```javascript
+server: {
+  host: true,
+  port: 3000, // Change from 4321 to 3000
+}
+```
+
+### Update Production URL
+
+```javascript
+site: "https://your-custom-domain.com/",
+```
+
+### Disable Compression in Development
+
+```javascript
+import compress from "astro-compress";
+
+const isDev = import.meta.env.DEV;
+
+export default defineConfig({
+  integrations: [
+    sitemap(),
+    ...(isDev ? [] : [compress()]), // Only compress in production
+  ],
+});
+```
+
+### Add Base Path for Subdirectory Deployment
+
+```javascript
+export default defineConfig({
+  base: '/my-app',
+  site: "https://example.com/my-app/",
+});
+```
+
+## Troubleshooting
+
+<Warning>
+After modifying `astro.config.mjs`, always restart your development server for changes to take effect.
+</Warning>
+
+### Dev server won't start
+- Check for syntax errors in the config file
+- Ensure all imported packages are installed
+- Verify the port isn't already in use
+
+### Sitemap not generating
+- Verify the `site` option is set correctly
+- Ensure the sitemap integration is included
+- Check that pages are being built (not all dynamic)
+
+### Tailwind styles not applying
+- Verify `@tailwindcss/vite` is installed
+- Check that the plugin is in the `vite.plugins` array
+- Ensure your Tailwind configuration file exists
+
+### i18n routes not working
+- Confirm `i18n.config.ts` exports match the imports
+- Verify page structure matches locale configuration
+- Check routing options are correct for your use case

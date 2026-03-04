@@ -1,0 +1,433 @@
+---
+title: Project Structure
+description: Complete directory structure and file organization of Jowy Portfolio
+---
+
+The Jowy Portfolio project follows a well-organized structure that separates concerns and makes the codebase easy to navigate.
+
+## Root Directory
+
+```
+source/
+├── .devcontainer/       # Development container configuration
+├── .github/             # GitHub workflows and actions
+├── .vscode/             # VSCode workspace settings
+├── public/              # Static assets (favicon, images)
+├── src/                 # Source code (detailed below)
+├── astro.config.mjs     # Astro configuration
+├── i18n.config.ts       # Internationalization settings
+├── package.json         # Project dependencies
+├── tailwind.config.mjs  # Tailwind CSS configuration
+└── tsconfig.json        # TypeScript configuration
+```
+
+## Source Directory (`src/`)
+
+The `src/` directory contains all application code organized by function:
+
+### Components (`src/components/`)
+
+Reusable Astro components for the UI:
+
+<AccordionGroup>
+  <Accordion title="Media Components">
+    **Player Components:**
+    - `SoundCloudPlayer.astro`: Embedded SoundCloud track player
+    - `YouTubePlayer.astro`: Embedded YouTube video player
+    - `Carousel.astro`: Image carousel with navigation
+    
+    **Location:** `src/components/`
+  </Accordion>
+
+  <Accordion title="Navigation Components">
+    **Navigation Elements:**
+    - `NavPhoto.astro`: Individual navigation photo item
+    - `NavPhotoSection.astro`: Complete navigation section with photo
+    - `LangSwitcher.astro`: Language switcher component
+    
+    **Location:** `src/components/`
+  </Accordion>
+
+  <Accordion title="UI Components">
+    **Interface Elements:**
+    - `Modal.astro`: Reusable modal dialog
+    - `Calendar.astro`: Event calendar display
+    - `Mail.astro`: Contact mail component
+    - `ThemeButton.astro`: Theme toggle button
+    - `Separador.astro`: Visual separator
+    - `VerticalMarquee.astro`: Scrolling text animation
+    - `SocialNetworksList.astro`: Social media links
+    - `PrivacyEmbed.astro`: Privacy-respecting embed wrapper
+    
+    **Location:** `src/components/`
+  </Accordion>
+</AccordionGroup>
+
+**Complete Component List:**
+
+```
+src/components/
+├── Calendar.astro
+├── Carousel.astro
+├── LangSwitcher.astro
+├── Mail.astro
+├── Modal.astro
+├── NavPhoto.astro
+├── NavPhotoSection.astro
+├── PrivacyEmbed.astro
+├── Separador.astro
+├── SocialNetworksList.astro
+├── SoundCloudPlayer.astro
+├── ThemeButton.astro
+├── VerticalMarquee.astro
+└── YouTubePlayer.astro
+```
+
+### Pages (`src/pages/`)
+
+Astro's file-based routing structure:
+
+```
+src/pages/
+├── [...locale]/         # Internationalized routes
+│   ├── 404.astro       # Not found page
+│   ├── bio.astro       # Biography page
+│   ├── dj.astro        # DJ portfolio page
+│   ├── index.astro     # Home/landing page
+│   ├── producer.astro  # Music producer page
+│   └── sound.astro     # Sound engineer page
+└── sitemap.xml.ts      # Dynamic sitemap generation
+```
+
+<Note>
+  The `[...locale]` directory uses Astro's rest parameters to handle internationalized routes. See [Routing](/architecture/routing) for details.
+</Note>
+
+**Page Structure Example:**
+
+```astro
+// src/pages/[...locale]/index.astro
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getI18nInfo } from "@/utils/i18n";
+
+export function getStaticPaths() {
+  return locales.map((lang) => {
+    if (lang === defaultLang) {
+      return { params: { locale: undefined } };
+    }
+    return { params: { locale: lang } };
+  });
+}
+
+const { dictionary, langParam } = await getI18nInfo(Astro.params.locale);
+```
+
+### Layouts (`src/layouts/`)
+
+Shared page templates:
+
+```
+src/layouts/
+├── BaseLayout.astro    # Core HTML structure, SEO, analytics
+└── PageLayout.astro    # Content page wrapper
+```
+
+**BaseLayout Features:**
+- SEO optimization with `astro-seo`
+- Open Graph and Twitter Card metadata
+- Structured data (JSON-LD)
+- Google Analytics integration
+- View transitions
+- Landing page intro animation
+
+### Server Services (`src/server/`)
+
+Server-side API integrations:
+
+```
+src/server/
+├── constants.ts
+└── services/
+    ├── cache.ts                  # In-memory cache implementation
+    ├── soundcloud/
+    │   ├── auth.ts              # SoundCloud authentication
+    │   ├── index.ts             # Service exports
+    │   ├── tracks.ts            # Track fetching
+    │   └── users.ts             # User info retrieval
+    ├── spotify/
+    │   ├── auth.ts              # OAuth token management
+    │   └── tracks.ts            # Top tracks API
+    └── youtube/
+        └── playlist.ts          # Playlist data fetching
+```
+
+<Tabs>
+  <Tab title="Spotify Service">
+    **Files:**
+    - `auth.ts`: Client credentials OAuth flow
+    - `tracks.ts`: Fetch user's top tracks
+    
+    **Key Functions:**
+    - `getSpotifyToken()`: Retrieve access token with caching
+    - `getTopTracks()`: Fetch top tracks for a user
+    
+    **Location:** `src/server/services/spotify/`
+  </Tab>
+  <Tab title="SoundCloud Service">
+    **Files:**
+    - `auth.ts`: API authentication
+    - `tracks.ts`: Track data retrieval
+    - `users.ts`: User profile fetching
+    - `index.ts`: Unified API export
+    
+    **Key Functions:**
+    - `getUserTracks()`: Get tracks for a user
+    - `getUserInfo()`: Fetch user profile
+    
+    **Location:** `src/server/services/soundcloud/`
+  </Tab>
+  <Tab title="YouTube Service">
+    **Files:**
+    - `playlist.ts`: Playlist and video fetching
+    
+    **Key Functions:**
+    - `getPlaylistVideos()`: Retrieve playlist items
+    
+    **Location:** `src/server/services/youtube/`
+  </Tab>
+  <Tab title="Cache Service">
+    **File:** `cache.ts`
+    
+    **Key Functions:**
+    - `getFromCache<T>(key)`: Retrieve cached data
+    - `setInCache<T>(key, data, duration)`: Store data with TTL
+    
+    **Implementation:** In-memory Map with expiration timestamps
+    
+    **Location:** `src/server/services/`
+  </Tab>
+</Tabs>
+
+<Warning>
+  **Server-Only Code**: All services in `src/server/` run only during build time. Never import them into client components.
+</Warning>
+
+### Library (`src/lib/`)
+
+Core utilities and shared logic:
+
+```
+src/lib/
+├── BaseFetcher.ts      # Generic HTTP client with error handling
+└── ErrorTypes.ts       # Custom error classes (ApiError, NetworkError)
+```
+
+**BaseFetcher Usage:**
+
+```typescript
+import { baseFetcher } from '@/lib/BaseFetcher';
+
+const data = await baseFetcher<ResponseType>('https://api.example.com/data', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload),
+});
+```
+
+### Types (`src/types/`)
+
+TypeScript type definitions organized by service:
+
+```
+src/types/
+├── cache.d.ts
+├── socialNetworksList.d.ts
+├── theme.d.ts
+├── soundcloud/
+│   ├── token.d.ts
+│   ├── track.d.ts
+│   └── user.d.ts
+├── spotify/
+│   ├── token.d.ts
+│   └── topTracks.d.ts
+└── youtube/
+    ├── playlist.d.ts
+    └── video.d.ts
+```
+
+**Type Organization:**
+- Each external API has its own subdirectory
+- `.d.ts` files contain interface definitions
+- Shared types are at the root level
+
+**Example Type Definition:**
+
+```typescript
+// src/types/spotify/topTracks.d.ts
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: Array<{ name: string }>;
+  album: {
+    images: Array<{ url: string }>;
+  };
+  external_urls: {
+    spotify: string;
+  };
+}
+```
+
+### Constants (`src/constants/`)
+
+Application-wide constant values:
+
+```
+src/constants/
+├── calendar.ts              # Event calendar data
+├── email.ts                 # Email configuration
+├── icons.ts                 # Icon definitions
+├── photos.ts                # Image imports and metadata
+└── socialNetworksList.ts    # Social media links
+```
+
+**Usage Example:**
+
+```typescript
+// src/constants/photos.ts
+import djPhoto from '@/assets/dj/main.jpg';
+
+export const djCutPhoto = {
+  src: djPhoto.src,
+  alt: 'Jowy DJ Performance',
+};
+```
+
+### Utilities (`src/utils/`)
+
+Helper functions and transformers:
+
+```
+src/utils/
+├── animations.ts                  # Animation helpers
+├── getSoundCloudTracksLinks.ts   # SoundCloud data transformer
+├── getYoutubeVideosInfo.ts       # YouTube data transformer
+└── i18n.ts                        # Internationalization utilities
+```
+
+**i18n Utility:**
+
+```typescript
+// src/utils/i18n.ts
+export async function getI18nInfo(lang: string | undefined) {
+  const langParam = (lang || defaultLang) as Lang;
+  const dictionary = await getDictionary(langParam);
+  
+  return { dictionary, langParam };
+}
+```
+
+### Dictionaries (`src/dictionaries/`)
+
+Translation files for each supported language:
+
+```
+src/dictionaries/
+├── en.ts    # English translations
+└── es.ts    # Spanish translations (default)
+```
+
+**Dictionary Structure:**
+
+```typescript
+// src/dictionaries/es.ts
+export default {
+  indexPage: {
+    title: 'Inicio',
+    description: 'Productor musical · DJ · Sonidista',
+    sections: [...],
+  },
+  bioPage: {
+    title: 'Biografía',
+    // ...
+  },
+};
+```
+
+### Assets (`src/assets/`)
+
+Static images and media organized by feature:
+
+```
+src/assets/
+├── dj/          # DJ performance photos
+├── photo/       # General photography
+├── producer/    # Music production images
+├── rrss/        # Social network icons
+└── theme/       # Theme-related graphics
+```
+
+### Styles (`src/styles/`)
+
+Global CSS and style utilities:
+
+```
+src/styles/
+└── global.css   # Tailwind imports and global styles
+```
+
+### Theme (`src/theme/`)
+
+Theme configuration and definitions:
+
+```
+src/theme/
+└── theme.ts     # Theme constants and utilities
+```
+
+## Import Aliases
+
+The project uses the `@/` alias for cleaner imports:
+
+```typescript
+// ✅ Good - using alias
+import { baseFetcher } from '@/lib/BaseFetcher';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+// ❌ Avoid - relative paths
+import { baseFetcher } from '../../lib/BaseFetcher';
+```
+
+**Configuration:**
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+## File Naming Conventions
+
+<Card title="Naming Patterns" icon="file-code">
+  - **Astro Components**: PascalCase (e.g., `NavPhoto.astro`)
+  - **TypeScript Modules**: camelCase (e.g., `baseFetcher.ts`)
+  - **Type Definitions**: camelCase with `.d.ts` (e.g., `token.d.ts`)
+  - **Constants**: camelCase (e.g., `socialNetworksList.ts`)
+  - **Config Files**: lowercase with extension (e.g., `astro.config.mjs`)
+</Card>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="sitemap" href="/architecture/overview">
+    Learn about design patterns and architecture
+  </Card>
+  <Card title="Routing System" icon="route" href="/architecture/routing">
+    Understand Astro's routing and i18n
+  </Card>
+</CardGroup>

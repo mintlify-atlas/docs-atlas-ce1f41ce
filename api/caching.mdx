@@ -1,0 +1,289 @@
+---
+title: "Caching System"
+description: "Server-side in-memory cache with expiration logic for API responses"
+---
+
+## Overview
+
+The caching system provides server-side in-memory storage for API responses with automatic expiration. Built on JavaScript's `Map` data structure, it enables efficient caching of typed data with time-based invalidation.
+
+## Core Functions
+
+### getFromCache
+
+Retrieves cached data if it exists and hasn't expired.
+
+```typescript
+function getFromCache<T>(key: string): T | null
+```
+
+<ParamField path="key" type="string" required>
+  Unique identifier for the cached data
+</ParamField>
+
+<ResponseField name="return" type="T | null">
+  Returns the cached data if found and valid, otherwise `null`
+</ResponseField>
+
+#### Implementation
+
+```typescript
+export function getFromCache<T>(key: string): T | null {
+  const cached = apiCache.get(key);
+  if (cached && cached.expiresAt > Date.now() / 1000) {
+    return cached.data as T;
+  }
+  return null;
+}
+```
+
+### setInCache
+
+Stores data in the cache with a specific expiration duration.
+
+```typescript
+function setInCache<T>(
+  key: string,
+  data: T,
+  durationSeconds: number
+): void
+```
+
+<ParamField path="key" type="string" required>
+  Unique identifier for the cached data
+</ParamField>
+
+<ParamField path="data" type="T" required>
+  The data to cache (can be any type)
+</ParamField>
+
+<ParamField path="durationSeconds" type="number" required>
+  Time in seconds until the cache entry expires
+</ParamField>
+
+#### Implementation
+
+```typescript
+export function setInCache<T>(
+  key: string,
+  data: T,
+  durationSeconds: number
+): void {
+  const expiresAt = Date.now() / 1000 + durationSeconds;
+  apiCache.set(key, { data, expiresAt });
+}
+```
+
+## Data Structures
+
+### CachedItem Interface
+
+```typescript
+interface CachedItem<T> {
+  data: T;
+  expiresAt: number; // Timestamp in seconds
+}
+```
+
+<ParamField path="data" type="T">
+  The cached data payload of any type
+</ParamField>
+
+<ParamField path="expiresAt" type="number">
+  Unix timestamp in seconds when the cache entry expires
+</ParamField>
+
+### Internal Cache Storage
+
+```typescript
+const apiCache = new Map<string, CachedItem<any>>();
+```
+
+The cache uses a `Map` to store multiple entries with different keys, allowing efficient lookups and updates.
+
+## Expiration Logic
+
+Cache expiration is checked on every read operation:
+
+```typescript
+if (cached && cached.expiresAt > Date.now() / 1000) {
+  // Cache is valid
+  return cached.data as T;
+}
+// Cache is expired or doesn't exist
+return null;
+```
+
+<Note>
+  Timestamps are stored and compared in seconds (Unix timestamp divided by 1000). This is important when setting cache durations.
+</Note>
+
+### Expiration Calculation
+
+When setting cache entries:
+
+```typescript
+const expiresAt = Date.now() / 1000 + durationSeconds;
+```
+
+This adds the duration to the current timestamp to calculate the absolute expiration time.
+
+## Usage Patterns
+
+### Basic Cache Pattern
+
+```typescript
+import { getFromCache, setInCache } from '@/server/services/cache';
+import { baseFetcher } from '@/lib/BaseFetcher';
+
+interface UserData {
+  id: string;
+  name: string;
+}
+
+async function getUserData(userId: string): Promise<UserData> {
+  const cacheKey = `user:${userId}`;
+  
+  // Try to get from cache
+  const cached = getFromCache<UserData>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  
+  // Fetch fresh data
+  const userData = await baseFetcher<UserData>(`/api/users/${userId}`);
+  
+  // Cache for 5 minutes (300 seconds)
+  setInCache(cacheKey, userData, 300);
+  
+  return userData;
+}
+```
+
+### API Route with Caching
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { getFromCache, setInCache } from '@/server/services/cache';
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  
+  const cacheKey = `api:data:${id}`;
+  
+  // Check cache first
+  const cachedData = getFromCache<ResponseType>(cacheKey);
+  if (cachedData) {
+    return NextResponse.json(cachedData, {
+      headers: { 'X-Cache': 'HIT' },
+    });
+  }
+  
+  // Fetch fresh data
+  const data = await fetchDataFromSource(id);
+  
+  // Cache for 10 minutes
+  setInCache(cacheKey, data, 600);
+  
+  return NextResponse.json(data, {
+    headers: { 'X-Cache': 'MISS' },
+  });
+}
+```
+
+### Conditional Caching
+
+```typescript
+async function getContent(id: string, bustCache = false) {
+  const cacheKey = `content:${id}`;
+  
+  if (!bustCache) {
+    const cached = getFromCache<Content>(cacheKey);
+    if (cached) return cached;
+  }
+  
+  const content = await fetchContent(id);
+  
+  // Cache longer for stable content
+  const duration = content.isStable ? 3600 : 300; // 1 hour vs 5 minutes
+  setInCache(cacheKey, content, duration);
+  
+  return content;
+}
+```
+
+### Multiple Cache Keys
+
+```typescript
+import { getFromCache, setInCache } from '@/server/services/cache';
+
+async function getPlaylist(playlistId: string) {
+  // Cache the full playlist
+  const playlistKey = `playlist:${playlistId}`;
+  const cached = getFromCache<Playlist>(playlistKey);
+  if (cached) return cached;
+  
+  const playlist = await fetchPlaylist(playlistId);
+  
+  // Cache playlist for 15 minutes
+  setInCache(playlistKey, playlist, 900);
+  
+  // Also cache individual tracks
+  playlist.tracks.forEach(track => {
+    setInCache(`track:${track.id}`, track, 900);
+  });
+  
+  return playlist;
+}
+```
+
+## Cache Duration Guidelines
+
+<Note>
+  Choose cache durations based on data volatility and freshness requirements:
+  
+  - **30-60 seconds**: Frequently changing data (live metrics, real-time feeds)
+  - **5-10 minutes**: User-specific data, search results
+  - **15-30 minutes**: Semi-static content, API aggregations
+  - **1+ hours**: Stable content, configuration data
+</Note>
+
+## Best Practices
+
+1. **Use descriptive cache keys** - Include entity type and ID (e.g., `user:123`, `post:456`)
+2. **Set appropriate durations** - Balance freshness needs with API load
+3. **Check cache first** - Always attempt to read from cache before making external requests
+4. **Handle cache misses gracefully** - Treat `null` returns as cache misses and fetch fresh data
+5. **Cache early, cache often** - Cache immediately after fetching to benefit subsequent requests
+
+## Limitations
+
+<Warning>
+  The cache is stored in memory and has the following limitations:
+  
+  - **Not persistent**: Cache is cleared when the server restarts
+  - **Single instance**: Not shared across multiple server instances
+  - **No size limits**: No automatic eviction when memory grows
+  - **No manual invalidation**: No built-in way to clear specific entries
+</Warning>
+
+For production applications with multiple server instances, consider using Redis or similar distributed cache solutions.
+
+## Type Safety
+
+Both functions use TypeScript generics for type safety:
+
+```typescript
+// Type is inferred from usage
+const user = getFromCache<User>('user:123');
+// user is typed as User | null
+
+setInCache<User>('user:123', userData, 300);
+// Ensures userData matches User type
+```
+
+## Related
+
+- [BaseFetcher](/api/base-fetcher) - HTTP fetcher for API requests
+- [Error Handling](/api/error-handling) - Handling errors in cached operations

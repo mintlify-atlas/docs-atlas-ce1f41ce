@@ -1,0 +1,157 @@
+---
+title: "BaseFetcher"
+description: "Generic HTTP fetcher abstraction layer with automatic error handling and type safety"
+---
+
+## Overview
+
+The `baseFetcher` function provides a type-safe abstraction layer over the native Fetch API, handling common patterns like error management, JSON parsing, and network failures automatically.
+
+## Function Signature
+
+```typescript
+async function baseFetcher<T>(
+  url: string,
+  options?: FetcherOptions
+): Promise<T>
+```
+
+### Parameters
+
+<ParamField path="url" type="string" required>
+  The URL to fetch from
+</ParamField>
+
+<ParamField path="options" type="FetcherOptions">
+  Extended RequestInit options with typed headers
+  
+  ```typescript
+  interface FetcherOptions extends RequestInit {
+    headers?: Record<string, string>;
+  }
+  ```
+</ParamField>
+
+### Return Value
+
+<ResponseField name="Promise<T>" type="T">
+  Returns a promise that resolves to the typed response data. The function automatically parses JSON responses and returns `null` for empty responses (204 No Content).
+</ResponseField>
+
+## Error Handling
+
+The fetcher throws two types of errors:
+
+<ResponseField name="ApiError" type="Error">
+  Thrown for HTTP errors (4xx, 5xx status codes). See [Error Handling](/api/error-handling) for details.
+</ResponseField>
+
+<ResponseField name="NetworkError" type="Error">
+  Thrown for network failures, CORS issues, or timeouts. See [Error Handling](/api/error-handling) for details.
+</ResponseField>
+
+## Implementation Details
+
+### Response Handling
+
+The fetcher implements intelligent response parsing:
+
+```typescript
+if (response.ok) {
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return (await response.json()) as T;
+  }
+  // For DELETE or PUT requests without response body
+  return null as T;
+}
+```
+
+### HTTP Error Processing
+
+For failed requests (status 4xx/5xx), the fetcher attempts to extract error messages from the response body:
+
+```typescript
+let errorMessage = `Fallo en la petición a ${url}. Status: ${response.status}`;
+try {
+  const errorBody = await response.json();
+  if (errorBody.message) {
+    errorMessage = errorBody.message;
+  } else if (errorBody.error) {
+    errorMessage = errorBody.error;
+  }
+} catch (e) {
+  errorMessage = `${response.status} ${response.statusText}`;
+}
+
+throw new ApiError(errorMessage, response.status);
+```
+
+<Note>
+  The fetcher attempts to parse error messages from `message` or `error` fields in the response body, falling back to the HTTP status text if parsing fails.
+</Note>
+
+### Network Error Detection
+
+Network-level failures are caught and wrapped:
+
+```typescript
+catch (error) {
+  if (error instanceof ApiError) {
+    throw error; // Re-throw API errors
+  }
+  // For TypeError, network failures, CORS, timeout
+  throw new NetworkError();
+}
+```
+
+## Usage Examples
+
+### Basic GET Request
+
+```typescript
+import { baseFetcher } from '@/lib/BaseFetcher';
+
+interface User {
+  id: string;
+  name: string;
+}
+
+const user = await baseFetcher<User>('/api/users/123');
+```
+
+### POST Request with Headers
+
+```typescript
+const response = await baseFetcher<{ success: boolean }>(
+  '/api/users',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: 'John' }),
+  }
+);
+```
+
+### Error Handling Pattern
+
+```typescript
+import { ApiError, NetworkError } from '@/lib/ErrorTypes';
+
+try {
+  const data = await baseFetcher<DataType>('/api/endpoint');
+} catch (error) {
+  if (error instanceof ApiError) {
+    console.error(`API Error ${error.status}: ${error.message}`);
+  } else if (error instanceof NetworkError) {
+    console.error('Network connection failed');
+  }
+}
+```
+
+## Related
+
+- [Error Handling](/api/error-handling) - Error types and patterns
+- [Caching](/api/caching) - Server-side cache integration

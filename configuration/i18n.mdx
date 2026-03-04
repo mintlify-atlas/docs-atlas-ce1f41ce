@@ -1,0 +1,195 @@
+---
+title: Internationalization (i18n)
+description: Configure multi-language support with Spanish and English locales
+---
+
+## Overview
+
+Jowy Portfolio includes built-in internationalization (i18n) support with Spanish and English languages. The i18n configuration is managed through Astro's native i18n routing system.
+
+## Configuration
+
+The i18n configuration is defined in `i18n.config.ts` at the project root:
+
+```typescript
+// i18n.config.ts
+export type Lang = "es" | "en";
+export const locales: Lang[] = ["es", "en"];
+export const defaultLang: Lang = "es";
+```
+
+### Supported Locales
+
+<ParamField path="locales" type="Lang[]" default='["es", "en"]'>
+  Array of supported language codes. Currently supports Spanish (`es`) and English (`en`).
+</ParamField>
+
+<ParamField path="defaultLang" type="Lang" default='"es"'>
+  The default language for the site. Set to Spanish (`es`).
+</ParamField>
+
+<ParamField path="Lang" type="type">
+  TypeScript type alias for supported languages: `"es" | "en"`
+</ParamField>
+
+## Astro i18n Integration
+
+The i18n configuration is integrated into Astro's configuration in `astro.config.mjs`:
+
+```javascript
+import { defaultLang, locales } from "./i18n.config";
+
+export default defineConfig({
+  i18n: {
+    defaultLocale: defaultLang,
+    locales: locales,
+    routing: {
+      prefixDefaultLocale: false,
+      redirectToDefaultLocale: true,
+    },
+  },
+});
+```
+
+### Routing Configuration
+
+<ParamField path="i18n.defaultLocale" type="string" default='"es"'>
+  The default locale for the site, imported from `i18n.config.ts`.
+</ParamField>
+
+<ParamField path="i18n.locales" type="string[]" default='["es", "en"]'>
+  Array of all supported locales, imported from `i18n.config.ts`.
+</ParamField>
+
+<ParamField path="i18n.routing.prefixDefaultLocale" type="boolean" default={false}>
+  When `false`, the default locale (Spanish) URLs don't include the language prefix.
+  
+  - Spanish: `/about` (no prefix)
+  - English: `/en/about` (with prefix)
+</ParamField>
+
+<ParamField path="i18n.routing.redirectToDefaultLocale" type="boolean" default={true}>
+  Automatically redirects the root path to the default locale when `prefixDefaultLocale` is `false`.
+</ParamField>
+
+## URL Structure
+
+With the current configuration:
+
+### Spanish (Default)
+```
+https://jowy-portfolio.vercel.app/
+https://jowy-portfolio.vercel.app/about
+https://jowy-portfolio.vercel.app/music
+```
+
+### English
+```
+https://jowy-portfolio.vercel.app/en
+https://jowy-portfolio.vercel.app/en/about
+https://jowy-portfolio.vercel.app/en/music
+```
+
+<Note>
+Since `prefixDefaultLocale` is `false`, Spanish URLs (the default language) don't include `/es` in the path.
+</Note>
+
+## Adding a New Language
+
+To add support for a new language:
+
+1. Update `i18n.config.ts` to include the new locale:
+
+```typescript
+export type Lang = "es" | "en" | "fr"; // Add French
+export const locales: Lang[] = ["es", "en", "fr"];
+export const defaultLang: Lang = "es";
+```
+
+2. Create language-specific content directories:
+
+```bash
+src/pages/fr/
+```
+
+3. Add translations for UI elements and content.
+
+4. Restart your development server.
+
+<Warning>
+When adding new languages, ensure all existing pages have corresponding translations to avoid broken links.
+</Warning>
+
+## Changing the Default Language
+
+To change the default language from Spanish to English:
+
+1. Update `i18n.config.ts`:
+
+```typescript
+export const defaultLang: Lang = "en"; // Changed from "es"
+```
+
+2. Rebuild your site:
+
+```bash
+npm run build
+```
+
+<Note>
+Changing the default language will affect your URL structure. Users with bookmarks to the old default language URLs may need to update them.
+</Note>
+
+## Language Detection
+
+Astro's i18n routing automatically handles:
+
+- URL-based locale detection
+- Fallback to default locale for unsupported languages
+- Proper redirects based on routing configuration
+
+## TypeScript Support
+
+The `Lang` type provides type safety throughout your application:
+
+```typescript
+import type { Lang } from "../i18n.config";
+
+function getTranslation(lang: Lang, key: string) {
+  // TypeScript ensures only "es" or "en" are valid
+}
+```
+
+## Best Practices
+
+<Accordion title="Keep content structure consistent">
+  Maintain the same page structure across all locales to ensure consistent user experience.
+</Accordion>
+
+<Accordion title="Use locale-aware date/time formatting">
+  Format dates and times according to each locale's conventions using `Intl.DateTimeFormat`.
+</Accordion>
+
+<Accordion title="Translate metadata">
+  Don't forget to translate page titles, descriptions, and other SEO metadata for each language.
+</Accordion>
+
+<Accordion title="Handle RTL languages">
+  If adding right-to-left languages (Arabic, Hebrew), configure appropriate text direction in your styles.
+</Accordion>
+
+## Troubleshooting
+
+### Language switcher not working
+- Verify the `i18n` configuration in `astro.config.mjs` matches `i18n.config.ts`
+- Ensure page files exist for all supported locales
+- Check that locale prefixes in links are correct
+
+### 404 errors on translated pages
+- Confirm the page exists in the corresponding locale directory (e.g., `src/pages/en/`)
+- Rebuild the site after adding new pages
+- Verify routing configuration in `astro.config.mjs`
+
+### Default language showing prefix
+- Check that `prefixDefaultLocale` is set to `false` in `astro.config.mjs`
+- Clear your browser cache and restart the dev server

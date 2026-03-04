@@ -1,0 +1,273 @@
+---
+title: API Setup
+description: Configure API credentials for Spotify, SoundCloud, YouTube, and Google Calendar to fetch dynamic content for your Jowy Portfolio.
+---
+
+The Jowy Portfolio integrates with multiple music and content platforms to automatically display your latest tracks, videos, and events. This guide walks you through obtaining and configuring API credentials for each service.
+
+## Overview
+
+Your portfolio requires API access to:
+
+- **Spotify**: Display artist profile, tracks, and playlists
+- **SoundCloud**: Fetch latest productions and user metrics
+- **YouTube**: Show video playlists and latest sessions
+- **Google Calendar**: Sync upcoming gigs and events
+
+<Note>
+  All API credentials should be stored as environment variables and never committed to version control.
+</Note>
+
+## Spotify API Setup
+
+<Steps>
+  <Step title="Create a Spotify App">
+    1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+    2. Log in with your Spotify account
+    3. Click **Create an App**
+    4. Fill in the app name (e.g., "Jowy Portfolio") and description
+    5. Accept the Terms of Service and click **Create**
+  </Step>
+
+  <Step title="Get Your Credentials">
+    Once your app is created, you'll see the app dashboard:
+    
+    1. Click **Settings** in the top right
+    2. Copy your **Client ID**
+    3. Click **View client secret** and copy your **Client Secret**
+    
+    <Warning>
+      Keep your Client Secret secure. Never expose it in client-side code or public repositories.
+    </Warning>
+  </Step>
+
+  <Step title="Get Your Artist ID">
+    1. Go to your Spotify artist profile
+    2. Click the **Share** button (three dots menu)
+    3. Select **Copy link to artist**
+    4. Your Artist ID is the string after `/artist/` in the URL
+    
+    Example: `https://open.spotify.com/artist/ABC123XYZ` → Artist ID is `ABC123XYZ`
+  </Step>
+
+  <Step title="Add Environment Variables">
+    Add these variables to your `.env` file:
+    
+    ```env
+    SPOTIFY_CLIENT_ID=your_client_id_here
+    SPOTIFY_CLIENT_SECRET=your_client_secret_here
+    SPOTIFY_ARTIST_ID=your_artist_id_here
+    ```
+  </Step>
+</Steps>
+
+### How Spotify Authentication Works
+
+The portfolio uses the **Client Credentials Flow** to authenticate with Spotify. The authentication process:
+
+1. Encodes your Client ID and Secret in Base64
+2. Requests an access token from `https://accounts.spotify.com/api/token`
+3. Caches the token server-side (expires in ~3600 seconds)
+4. Automatically refreshes the token when it expires
+
+You can see the implementation in `src/server/services/spotify/auth.ts:15-49`.
+
+## SoundCloud API Setup
+
+<Steps>
+  <Step title="Create a SoundCloud App">
+    1. Go to [SoundCloud for Developers](https://developers.soundcloud.com/)
+    2. Sign in with your SoundCloud account
+    3. Navigate to **Your Apps** and click **Register a new app**
+    4. Fill in the required information:
+       - App name
+       - Description
+       - Redirect URI (use `http://localhost:4321` for development)
+    5. Accept the Terms of Use and click **Register**
+  </Step>
+
+  <Step title="Get Your Credentials">
+    After creating your app:
+    
+    1. Copy your **Client ID**
+    2. Copy your **Client Secret**
+    3. Generate an **Authorization token** (usually in the format `OAuth <token>`)
+  </Step>
+
+  <Step title="Get Your User ID">
+    To fetch your tracks and profile:
+    
+    1. Go to your SoundCloud profile
+    2. Your User ID is in the URL or can be found via the API
+    3. Alternatively, use the SoundCloud API:
+       ```bash
+       curl "https://api.soundcloud.com/resolve?url=https://soundcloud.com/yourusername&client_id=YOUR_CLIENT_ID"
+       ```
+    4. The response will contain your numeric `id`
+  </Step>
+
+  <Step title="Add Environment Variables">
+    Add these variables to your `.env` file:
+    
+    ```env
+    SOUNDCLOUD_CLIENT_ID=your_client_id_here
+    SOUNDCLOUD_CLIENT_SECRET=your_client_secret_here
+    SOUNDCLOUD_AUTHORIZATION=OAuth_your_token_here
+    SOUNDCLOUD_USER_ID=your_numeric_user_id
+    ```
+  </Step>
+</Steps>
+
+### SoundCloud Authentication
+
+The portfolio uses the **Client Credentials grant** to authenticate:
+
+1. Sends a POST request to `https://secure.soundcloud.com/oauth/token`
+2. Includes Client ID, Client Secret, and Authorization header
+3. Receives an access token (typically valid for 3600 seconds)
+4. Caches the token server-side with automatic refresh
+
+Implementation can be found in `src/server/services/soundcloud/auth.ts:21-58`.
+
+## YouTube Data API Setup
+
+<Steps>
+  <Step title="Create a Google Cloud Project">
+    1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+    2. Create a new project or select an existing one
+    3. Name your project (e.g., "Jowy Portfolio")
+  </Step>
+
+  <Step title="Enable YouTube Data API v3">
+    1. In the Google Cloud Console, go to **APIs & Services** → **Library**
+    2. Search for "YouTube Data API v3"
+    3. Click on it and press **Enable**
+  </Step>
+
+  <Step title="Create API Credentials">
+    1. Go to **APIs & Services** → **Credentials**
+    2. Click **Create Credentials** → **API Key**
+    3. Copy your API key
+    4. (Optional but recommended) Click **Restrict Key** to limit it to YouTube Data API v3 only
+  </Step>
+
+  <Step title="Get Your Playlist or Channel ID">
+    For a **Playlist**:
+    1. Go to your YouTube playlist
+    2. The Playlist ID is in the URL after `list=`
+    3. Example: `https://www.youtube.com/playlist?list=PLx0sYbCqOb8T` → ID is `PLx0sYbCqOb8T`
+    
+    For a **Channel**:
+    1. Go to your YouTube channel
+    2. Click on any video, then click your channel name
+    3. The Channel ID is in the URL after `/channel/`
+  </Step>
+
+  <Step title="Add Environment Variables">
+    Add these variables to your `.env` file:
+    
+    ```env
+    YOUTUBE_API_KEY=your_youtube_api_key
+    YOUTUBE_PLAYLIST_SET_ID=your_playlist_id_or_channel_id
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  YouTube Data API has a daily quota limit (typically 10,000 units per day for free tier). Each API call consumes different amounts of quota. Monitor your usage in the Google Cloud Console.
+</Warning>
+
+## Google Calendar API Setup
+
+<Steps>
+  <Step title="Enable Google Calendar API">
+    1. In the same Google Cloud project, go to **APIs & Services** → **Library**
+    2. Search for "Google Calendar API"
+    3. Click on it and press **Enable**
+  </Step>
+
+  <Step title="Make Your Calendar Public">
+    1. Open [Google Calendar](https://calendar.google.com/)
+    2. Find the calendar you want to display (e.g., "Gigs")
+    3. Click the three dots next to the calendar name → **Settings and sharing**
+    4. Scroll to **Access permissions** and check **Make available to public**
+    5. Under **Integrate calendar**, copy the **Calendar ID** (usually looks like an email address)
+  </Step>
+
+  <Step title="Add Environment Variable">
+    Add this variable to your `.env` file:
+    
+    ```env
+    GOOGLE_CALENDAR_SRC=your_calendar_id@group.calendar.google.com
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The calendar integration embeds public calendar data. Ensure you only make calendars public that contain information you want to share on your portfolio.
+</Note>
+
+## Environment Variables Summary
+
+Your complete `.env` file should contain:
+
+```env
+# Spotify API
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+SPOTIFY_ARTIST_ID=your_spotify_artist_id
+
+# SoundCloud API
+SOUNDCLOUD_CLIENT_ID=your_soundcloud_client_id
+SOUNDCLOUD_CLIENT_SECRET=your_soundcloud_client_secret
+SOUNDCLOUD_AUTHORIZATION=OAuth_your_soundcloud_token
+SOUNDCLOUD_USER_ID=your_soundcloud_user_id
+
+# YouTube API
+YOUTUBE_API_KEY=your_youtube_api_key
+YOUTUBE_PLAYLIST_SET_ID=your_youtube_playlist_id
+
+# Google Calendar
+GOOGLE_CALENDAR_SRC=your_calendar_id@group.calendar.google.com
+```
+
+## Testing Your Configuration
+
+After setting up all environment variables:
+
+<Steps>
+  <Step title="Start the Development Server">
+    ```bash
+    npm run dev
+    ```
+    
+    The server will start at `http://localhost:4321`
+  </Step>
+
+  <Step title="Check the Console">
+    Watch for any authentication errors in the terminal. Successful API calls mean your credentials are working.
+  </Step>
+
+  <Step title="Verify Content">
+    Navigate through your portfolio and verify that:
+    - Spotify tracks are displaying
+    - SoundCloud content is loading
+    - YouTube videos appear
+    - Calendar events are visible
+  </Step>
+</Steps>
+
+<Warning>
+  If you see authentication errors, double-check that:
+  - All environment variables are spelled correctly (they are case-sensitive)
+  - There are no extra spaces in your `.env` file
+  - You've restarted the dev server after adding variables
+  - Your API credentials are active and not expired
+</Warning>
+
+## Next Steps
+
+Now that your APIs are configured:
+
+- [Deploy your portfolio to Vercel](/guides/deployment)
+- [Set up automated weekly rebuilds](/guides/ci-cd)

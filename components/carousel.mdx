@@ -1,0 +1,208 @@
+---
+title: "Carousel"
+description: "An infinite scrolling carousel component with autoplay, navigation buttons, and smooth transitions for displaying content in a rotating gallery format."
+---
+
+The Carousel component is a fully-featured image/content carousel with infinite scrolling, automatic playback, and navigation controls. It wraps slotted content into carousel items and provides a smooth viewing experience.
+
+## Features
+
+- **Infinite Scrolling**: Seamlessly loops through items without visual interruption
+- **Autoplay**: Automatically advances slides every 4 seconds
+- **Navigation Controls**: Previous/next arrow buttons with hover effects
+- **Pause on Hover**: Autoplay pauses when user hovers over the carousel
+- **Responsive Design**: Adapts to different screen sizes with appropriate spacing
+- **Accessibility**: Proper ARIA labels on navigation buttons
+
+## Usage
+
+### Basic Implementation
+
+```astro
+---
+import Carousel from '@/components/Carousel.astro';
+---
+
+<Carousel>
+  <div>Slide 1 content</div>
+  <div>Slide 2 content</div>
+  <div>Slide 3 content</div>
+</Carousel>
+```
+
+### With Images
+
+```astro
+---
+import Carousel from '@/components/Carousel.astro';
+import { Image } from 'astro:assets';
+import image1 from '@/assets/image1.jpg';
+import image2 from '@/assets/image2.jpg';
+---
+
+<Carousel>
+  <Image src={image1} alt="Description 1" />
+  <Image src={image2} alt="Description 2" />
+</Carousel>
+```
+
+## Props
+
+The Carousel component uses Astro's slot pattern and doesn't accept direct props. All content is passed through the default slot.
+
+<ParamField path="slot" type="HTMLElement[]" required>
+  The carousel items to display. Each child element will be wrapped in a carousel item container.
+</ParamField>
+
+## Structure
+
+### Component Layout
+
+The carousel consists of:
+- **Main Container**: `.sets-carousel` - Outer wrapper with relative positioning
+- **Overflow Container**: Handles visual clipping with rounded corners
+- **Slider**: `.flex` - The moving container that holds all items
+- **Navigation Buttons**: `.prev-btn` and `.next-btn` - Arrow controls
+
+### Generated Classes
+
+Each slotted child is automatically wrapped with:
+```html
+<div class="carousel-item w-full shrink-0">
+  <!-- Your content -->
+</div>
+```
+
+## Behavior
+
+### Infinite Scrolling Logic
+
+The carousel creates clones of the first and last items:
+- **First clone** is appended to the end
+- **Last clone** is prepended to the beginning
+- When reaching a clone, the carousel instantly jumps to the real item without transition
+
+### Autoplay Configuration
+
+<CodeGroup>
+```javascript Default Settings
+const AUTOPLAY_DELAY = 4000; // 4 seconds
+```
+
+```javascript Autoplay Events
+// Pauses on mouse enter
+carousel.addEventListener("mouseenter", () => {
+  stopAutoplay();
+});
+
+// Resumes on mouse leave
+carousel.addEventListener("mouseleave", () => {
+  startAutoplay();
+});
+```
+</CodeGroup>
+
+## Styling
+
+### Navigation Buttons
+
+The arrow buttons feature:
+- Semi-transparent black background (`bg-black/50`)
+- White inverted arrow icons
+- Scale animation on hover (125%)
+- Disabled state with reduced opacity
+- Responsive positioning for different breakpoints
+
+### Customization Classes
+
+```css
+.sets-carousel {
+  /* Relative positioning for absolute button placement */
+  position: relative;
+  width: 100%;
+}
+
+.prev-btn, .next-btn {
+  /* Positioned absolutely at vertical center */
+  transform: translateY(-50%);
+  transition: transform 0.3s;
+}
+
+.prev-btn:hover, .next-btn:hover {
+  transform: translateY(-50%) scale(1.25);
+}
+```
+
+## Animation
+
+The carousel uses CSS transforms for smooth transitions:
+
+```javascript
+slider.style.transition = "transform 0.5s ease-in-out";
+slider.style.transform = `translateX(-${currentIndex * 100}%)`;
+```
+
+### Transition Details
+- **Duration**: 0.5 seconds
+- **Easing**: ease-in-out
+- **Method**: translateX percentage-based positioning
+
+<Note>
+  The carousel automatically hides navigation buttons if there is only one item or if the necessary elements are not found.
+</Note>
+
+## Accessibility
+
+### ARIA Labels
+
+```html
+<button aria-label="Set anterior"><!-- Previous button --></button>
+<button aria-label="Siguiente set"><!-- Next button --></button>
+```
+
+### Disabled States
+
+Buttons include proper disabled states:
+- `disabled:cursor-not-allowed`
+- `disabled:opacity-20`
+
+## Advanced Features
+
+### Animation Lock
+
+The component prevents multiple simultaneous animations:
+
+```javascript
+let isAnimating = false;
+
+function goToSlide(index: number) {
+  if (isAnimating) return;
+  isAnimating = true;
+  // ... animation logic
+}
+```
+
+### Astro Page Load Integration
+
+The carousel reinitializes on Astro page transitions:
+
+```javascript
+document.addEventListener("astro:page-load", () => {
+  // Carousel initialization code
+});
+```
+
+<Note>
+  This ensures the carousel works correctly with Astro's View Transitions API.
+</Note>
+
+## Browser Compatibility
+
+The carousel uses modern JavaScript features:
+- CSS transforms
+- Template literals
+- Arrow functions
+- querySelector API
+- Event listeners
+
+Supported in all modern browsers (Chrome, Firefox, Safari, Edge).

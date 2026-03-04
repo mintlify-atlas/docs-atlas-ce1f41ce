@@ -1,0 +1,274 @@
+---
+title: "Spotify API Integration"
+description: "Server-side Spotify API service with OAuth2 client credentials flow, artist top tracks retrieval, and automatic token caching"
+---
+
+## Overview
+
+The Spotify service provides server-side integration with the Spotify Web API using OAuth2 client credentials flow. It handles authentication token management with automatic caching and expiration, and provides methods to retrieve artist top tracks.
+
+**Source Location**: `src/server/services/spotify/`
+
+<Note>
+  This service is designed to run exclusively on the server. Never expose authentication credentials to the client.
+</Note>
+
+## Authentication
+
+### getSpotifyToken()
+
+Retrieves a valid Spotify access token using client credentials flow. Checks cache before requesting a new token to optimize API usage.
+
+**Location**: `src/server/services/spotify/auth.ts:15`
+
+```typescript
+async function getSpotifyToken(): Promise<string>
+```
+
+#### Returns
+
+<ResponseField name="access_token" type="string" required>
+  Valid Spotify access token for API requests
+</ResponseField>
+
+#### Authentication Flow
+
+1. **Cache Check**: Verifies if a valid token exists in cache
+2. **Token Request**: If cache is empty/expired, requests new token from Spotify
+3. **Authorization**: Uses Basic Auth with Base64-encoded `client_id:client_secret`
+4. **Caching**: Stores token in cache with 60-second buffer before expiration
+
+#### API Endpoint
+
+```
+POST https://accounts.spotify.com/api/token
+```
+
+#### Request Headers
+
+<ParamField header="Content-Type" type="string" required>
+  `application/x-www-form-urlencoded`
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  `Basic {base64(client_id:client_secret)}`
+</ParamField>
+
+#### Request Body
+
+<ParamField body="grant_type" type="string" required>
+  Must be `client_credentials`
+</ParamField>
+
+#### Response Type: SpotifyToken
+
+```typescript
+interface SpotifyToken {
+  access_token: string;    // OAuth2 access token
+  token_type: string;      // "Bearer"
+  expires_in: number;      // Token lifetime in seconds
+}
+```
+
+#### Error Handling
+
+```typescript
+try {
+  const token = await getSpotifyToken();
+} catch (error) {
+  // Throws: "Fallo en la autenticación de Spotify"
+}
+```
+
+<Warning>
+  Requires `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` environment variables.
+</Warning>
+
+---
+
+## Track Methods
+
+### getArtistTopTracks()
+
+Retrieves the most popular tracks for a configured artist. Results are cached for 1 hour to reduce API calls.
+
+**Location**: `src/server/services/spotify/tracks.ts:14`
+
+```typescript
+async function getArtistTopTracks(): Promise<Track[] | null>
+```
+
+#### Parameters
+
+No parameters required. Uses `SPOTIFY_ARTIST_ID` from environment configuration.
+
+#### Returns
+
+<ResponseField name="tracks" type="Track[] | null">
+  Array of track objects, or `null` if error occurs or artist ID not configured
+</ResponseField>
+
+#### Response Type: Track
+
+```typescript
+interface Track {
+  album: Album;                    // Album information
+  artists: Artist2[];              // Array of artist objects
+  available_markets: string[];     // ISO country codes
+  disc_number: number;             // Disc number (multi-disc albums)
+  duration_ms: number;             // Track duration in milliseconds
+  explicit: boolean;               // Explicit content flag
+  external_ids: ExternalIds;       // ISRC, EAN, UPC identifiers
+  external_urls: ExternalUrls4;    // Spotify URL
+  href: string;                    // API endpoint for full track info
+  id: string;                      // Spotify track ID
+  is_playable: boolean;            // Playback availability
+  linked_from: LinkedFrom;         // Track linking information
+  restrictions: Restrictions2;     // Playback restrictions
+  name: string;                    // Track name
+  popularity: number;              // 0-100 popularity score
+  preview_url: string;             // 30-second preview MP3 URL
+  track_number: number;            // Track position on album
+  type: string;                    // "track"
+  uri: string;                     // Spotify URI
+  is_local: boolean;               // Local file flag
+}
+
+interface Album {
+  album_type: string;              // "album" | "single" | "compilation"
+  total_tracks: number;            // Number of tracks
+  available_markets: string[];     // ISO country codes
+  external_urls: ExternalUrls;     // Spotify URL
+  href: string;                    // API endpoint
+  id: string;                      // Spotify album ID
+  images: Image[];                 // Album artwork (various sizes)
+  name: string;                    // Album name
+  release_date: string;            // YYYY-MM-DD format
+  release_date_precision: string;  // "year" | "month" | "day"
+  restrictions: Restrictions;      // Content restrictions
+  type: string;                    // "album"
+  uri: string;                     // Spotify URI
+  artists: Artist[];               // Album artists
+}
+
+interface Image {
+  url: string;                     // Image URL
+  height: number;                  // Image height in pixels
+  width: number;                   // Image width in pixels
+}
+
+interface Artist {
+  external_urls: ExternalUrls2;    // Spotify URL
+  href: string;                    // API endpoint
+  id: string;                      // Spotify artist ID
+  name: string;                    // Artist name
+  type: string;                    // "artist"
+  uri: string;                     // Spotify URI
+}
+```
+
+#### API Endpoint
+
+```
+GET https://api.spotify.com/v1/artists/{artist_id}/top-tracks?market=ES
+```
+
+#### Request Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer {access_token}`
+</ParamField>
+
+#### Example Usage
+
+```typescript
+import { getArtistTopTracks } from '@/server/services/spotify/tracks';
+
+const tracks = await getArtistTopTracks();
+if (tracks) {
+  tracks.forEach(track => {
+    console.log(`${track.name} - ${track.artists[0].name}`);
+    console.log(`Popularity: ${track.popularity}`);
+    console.log(`Duration: ${track.duration_ms}ms`);
+  });
+}
+```
+
+#### Error Handling
+
+Returns `null` on errors:
+- Missing `SPOTIFY_ARTIST_ID` environment variable
+- Authentication failures
+- Network errors
+- Invalid API responses
+
+```typescript
+const tracks = await getArtistTopTracks();
+if (!tracks) {
+  console.error('Failed to retrieve tracks');
+}
+```
+
+---
+
+## Caching Strategy
+
+### Token Caching
+
+<ParamField query="cache_key" type="string">
+  `"spotify_token"`
+</ParamField>
+
+<ParamField query="duration" type="number">
+  `expires_in - 60` seconds (60-second safety buffer)
+</ParamField>
+
+### Track Caching
+
+<ParamField query="cache_key" type="string">
+  `"spotify_top_tracks_{artist_id}"`
+</ParamField>
+
+<ParamField query="duration" type="number">
+  3600 seconds (1 hour)
+</ParamField>
+
+<Info>
+  Caching is implemented using `getFromCache` and `setInCache` utilities from `@/server/services/cache`.
+</Info>
+
+---
+
+## Environment Variables
+
+<ParamField path="SPOTIFY_CLIENT_ID" type="string" required>
+  Spotify application client ID from [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+</ParamField>
+
+<ParamField path="SPOTIFY_CLIENT_SECRET" type="string" required>
+  Spotify application client secret
+</ParamField>
+
+<ParamField path="SPOTIFY_ARTIST_ID" type="string" required>
+  Spotify artist ID for `getArtistTopTracks()` method
+</ParamField>
+
+---
+
+## Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Fallo en la autenticación de Spotify" | Token request failed | Verify client credentials and network connectivity |
+| "No se ha definido un SPOTIFY_ARTIST_ID" | Missing artist ID configuration | Set `SPOTIFY_ARTIST_ID` environment variable |
+| Method returns `null` | API request failed | Check logs for specific error details |
+
+---
+
+## Dependencies
+
+- `@/lib/BaseFetcher` - HTTP request wrapper
+- `@/server/constants` - Environment variable configuration
+- `@/server/services/cache` - Token and response caching
+- `@/types/spotify/token.d` - Type definitions for token response
+- `@/types/spotify/topTracks.d` - Type definitions for tracks response

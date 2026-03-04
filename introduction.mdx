@@ -1,0 +1,203 @@
+---
+title: Introduction
+description: An immersive portfolio platform for DJ, producer, and sound designer Jowy, featuring automated multi-API integrations and server-side caching
+---
+
+# Introduction
+
+Jowy Portfolio is an immersive web experience designed for a multifaceted artist—DJ, producer, and sound space designer. More than a simple business card, this platform serves as a **centralized, automated hub** for artistic activity, reflecting the modern "House/Techno" aesthetic while keeping information fresh without constant manual maintenance.
+
+## What Makes It Unique
+
+Jowy Portfolio stands out through several innovative architectural decisions that combine performance, automation, and aesthetic excellence:
+
+### Multi-API Integration System
+
+The platform aggregates real-time data from multiple external APIs:
+
+- **Spotify API** - Latest tracks, playlists, and metrics
+- **SoundCloud API** - Production feeds and user tracks
+- **YouTube API** - Visual session playlists
+- **Google Calendar API** - Automated gig and event synchronization
+
+All API integrations are built on a unified `BaseFetcher` abstraction layer that standardizes error handling across the entire application.
+
+<Note>
+  The BaseFetcher pattern ensures consistent error handling and retry logic across all external API calls, making the codebase more maintainable and robust.
+</Note>
+
+### Server-Side Caching Architecture
+
+To minimize latency and respect API rate limits, Jowy Portfolio implements an in-memory caching system:
+
+```typescript
+// src/server/services/cache.ts:8
+const apiCache = new Map<string, CachedItem<any>>();
+
+export function getFromCache<T>(key: string): T | null {
+  const cached = apiCache.get(key);
+  if (cached && cached.expiresAt > Date.now() / 1000) {
+    return cached.data as T;
+  }
+  return null;
+}
+```
+
+This caching layer stores authentication tokens and API responses, dramatically reducing unnecessary external calls and improving response times.
+
+### Automated CI/CD Rebuilds
+
+The website rebuilds and redeploys weekly through GitHub Actions, automatically fetching fresh data during the build process:
+
+```yaml
+# .github/workflows/rebuild.yml:3-6
+schedule:
+  # Runs every Monday at 8:00 AM UTC
+  - cron: "0 8 * * 1"
+workflow_dispatch:
+```
+
+This ensures the latest events, tracks, and releases are always visible without manual intervention.
+
+### Internationalization (i18n)
+
+Built-in support for Spanish and English with Astro's native i18n routing:
+
+```typescript
+// i18n.config.ts:1-4
+export type Lang = "es" | "en";
+export const locales: Lang[] = ["es", "en"];
+export const defaultLang: Lang = "es";
+```
+
+Content dictionaries provide translations for all UI elements and page content.
+
+### Dark Mode with Neon Aesthetics
+
+Native dark mode design with customizable neon accent colors (`#f7a09`, `#6113C9`, `#1d6d30`) that match each section's theme:
+
+```astro
+// src/layouts/BaseLayout.astro:90-93
+<script is:inline>
+  (function () {
+    const html = document.documentElement;
+    html.classList.add("dark");
+    html.setAttribute("data-theme", "github-dark-default");
+  })();
+</script>
+```
+
+Advanced visual effects include gradient masks, scroll-triggered animations using `IntersectionObserver`, and custom CSS utilities for image fading.
+
+## Tech Stack Overview
+
+<CodeGroup>
+
+```json package.json
+{
+  "name": "jowy-portfolio",
+  "type": "module",
+  "version": "1.0.0",
+  "dependencies": {
+    "astro": "^5.15.9",
+    "tailwindcss": "^4.1.17",
+    "@astrojs/sitemap": "^3.5.1",
+    "@vercel/analytics": "^1.6.1",
+    "framer-motion": "^12.23.12",
+    "gsap": "^3.13.0"
+  }
+}
+```
+
+```typescript astro.config.mjs
+import { defineConfig } from "astro/config";
+import tailwindcss from "@tailwindcss/vite";
+import sitemap from "@astrojs/sitemap";
+import compress from "astro-compress";
+
+export default defineConfig({
+  site: "https://jowy-portfolio.vercel.app/",
+  vite: {
+    plugins: [tailwindcss()],
+  },
+  integrations: [sitemap(), compress()],
+  i18n: {
+    defaultLocale: "es",
+    locales: ["es", "en"],
+  },
+});
+```
+
+</CodeGroup>
+
+## Architecture Highlights
+
+### Clean, Typed Code
+
+The project emphasizes strict TypeScript typing throughout:
+
+- **Type definitions** for all API responses (Spotify, SoundCloud, YouTube)
+- **Interface definitions** for components and layouts
+- **Generic types** for reusable utilities like `BaseFetcher<T>`
+
+### Modular Service Layer
+
+Business logic is separated by domain:
+
+```
+src/server/services/
+├── cache.ts              # Centralized caching
+├── spotify/
+│   ├── auth.ts          # Token management
+│   └── tracks.ts        # Track fetching
+├── soundcloud/
+│   ├── auth.ts
+│   ├── tracks.ts
+│   └── users.ts
+└── youtube/
+    └── playlist.ts
+```
+
+This structure keeps code modular, testable, and easy to extend.
+
+### BaseFetcher Abstraction
+
+The core networking layer provides unified error handling:
+
+```typescript
+// src/lib/BaseFetcher.ts:20-23
+export async function baseFetcher<T>(
+  url: string,
+  options: FetcherOptions = {}
+): Promise<T>
+```
+
+It handles:
+- HTTP errors (4xx, 5xx) with custom `ApiError` class
+- Network failures with `NetworkError` class
+- JSON parsing with content-type detection
+- Type-safe responses with TypeScript generics
+
+<Warning>
+  All API keys and secrets must be configured as environment variables. Never commit credentials to version control.
+</Warning>
+
+## Use Cases
+
+Jowy Portfolio is ideal for:
+
+- **Artists and DJs** wanting an automated online presence
+- **Music producers** showcasing discography and services
+- **Sound designers** displaying portfolios and media work
+- **Developers** learning advanced Astro patterns and API integration techniques
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed setup and configuration guide
+  </Card>
+</CardGroup>

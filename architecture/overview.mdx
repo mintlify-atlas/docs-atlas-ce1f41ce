@@ -1,0 +1,298 @@
+---
+title: Architecture Overview
+description: Understand the architecture and design patterns used in Jowy Portfolio
+---
+
+Jowy Portfolio follows a modern, service-oriented architecture built on Astro's static site generation capabilities. The application is organized into clear layers that separate concerns and promote maintainability.
+
+## Architectural Principles
+
+The project follows these core architectural principles:
+
+<AccordionGroup>
+  <Accordion title="Service Layer Architecture">
+    All external API interactions are abstracted into dedicated service modules located in `src/server/services/`. Each service handles authentication, data fetching, and error handling independently.
+  </Accordion>
+
+  <Accordion title="Component-Based UI">
+    Reusable Astro components are organized in `src/components/` with clear responsibilities. Each component encapsulates its own styles and behavior.
+  </Accordion>
+
+  <Accordion title="Type Safety">
+    TypeScript types are defined in `src/types/` with dedicated subdirectories for each external service (Spotify, SoundCloud, YouTube).
+  </Accordion>
+
+  <Accordion title="Internationalization">
+    Multi-language support is built-in using Astro's i18n routing with dictionaries for each locale.
+  </Accordion>
+</AccordionGroup>
+
+## Core Layers
+
+### Presentation Layer
+
+The presentation layer consists of:
+
+- **Pages** (`src/pages/[...locale]/`): Route handlers using Astro's file-based routing
+- **Layouts** (`src/layouts/`): Shared page templates
+  - `BaseLayout.astro`: Core HTML structure, SEO, analytics
+  - `PageLayout.astro`: Content page wrapper
+- **Components** (`src/components/`): Reusable UI elements
+
+### Service Layer
+
+The service layer (`src/server/services/`) provides a clean API for external integrations:
+
+```typescript
+// src/server/services/soundcloud/index.ts
+export const soundCloudApi = {
+  tracks: {
+    getFromUser: getUserTracks,
+  },
+  users: {
+    getInfo: getUserInfo,
+  },
+};
+```
+
+Each service directory contains:
+- `auth.ts`: Authentication and token management
+- Specific resource handlers (e.g., `tracks.ts`, `users.ts`)
+- `index.ts`: Public API exports
+
+**Available Services:**
+
+<CardGroup cols={3}>
+  <Card title="Spotify" icon="spotify">
+    Authentication and top tracks fetching
+    
+    `src/server/services/spotify/`
+  </Card>
+  <Card title="SoundCloud" icon="soundcloud">
+    User info and track retrieval
+    
+    `src/server/services/soundcloud/`
+  </Card>
+  <Card title="YouTube" icon="youtube">
+    Playlist and video data
+    
+    `src/server/services/youtube/`
+  </Card>
+</CardGroup>
+
+### Data Layer
+
+#### Base Fetcher
+
+All HTTP requests use a centralized fetcher with error handling:
+
+```typescript
+// src/lib/BaseFetcher.ts
+export async function baseFetcher<T>(
+  url: string,
+  options: FetcherOptions = {}
+): Promise<T> {
+  try {
+    const response = await fetch(url, { ...options });
+    
+    if (response.ok) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return (await response.json()) as T;
+      }
+      return null as T;
+    }
+    
+    // Error handling...
+    throw new ApiError(errorMessage, response.status);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new NetworkError();
+  }
+}
+```
+
+**Key Features:**
+- Generic type support
+- Automatic JSON parsing
+- Structured error handling (`ApiError`, `NetworkError`)
+- Centralized request configuration
+
+#### Caching Strategy
+
+Server-side in-memory cache reduces API calls:
+
+```typescript
+// src/server/services/cache.ts
+const apiCache = new Map<string, CachedItem<any>>();
+
+export function getFromCache<T>(key: string): T | null {
+  const cached = apiCache.get(key);
+  if (cached && cached.expiresAt > Date.now() / 1000) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+export function setInCache<T>(
+  key: string,
+  data: T,
+  durationSeconds: number
+): void {
+  const expiresAt = Date.now() / 1000 + durationSeconds;
+  apiCache.set(key, { data, expiresAt });
+}
+```
+
+**Usage Example:**
+
+```typescript
+// src/server/services/spotify/auth.ts
+export async function getSpotifyToken(): Promise<string> {
+  // 1. Check cache first
+  const cachedToken = getFromCache<string>(TOKEN_CACHE_KEY);
+  if (cachedToken) return cachedToken;
+  
+  // 2. Fetch new token if needed
+  const res = await baseFetcher<SpotifyToken>(SPOTIFY_TOKEN_URL, {
+    headers,
+    method: "POST",
+    body,
+  });
+  
+  // 3. Cache with 60s buffer before expiration
+  setInCache(TOKEN_CACHE_KEY, res.access_token, res.expires_in - 60);
+  
+  return res.access_token;
+}
+```
+
+<Note>
+  Tokens are cached with a 60-second buffer before their actual expiration time to prevent race conditions.
+</Note>
+
+## Design Patterns
+
+### Service Facade Pattern
+
+Each external API is wrapped in a facade that provides a clean, unified interface:
+
+```typescript
+// Consumer code doesn't need to know about authentication
+import { soundCloudApi } from '@/server/services/soundcloud';
+
+const tracks = await soundCloudApi.tracks.getFromUser(userId);
+```
+
+### Error Handling
+
+Custom error types provide specific error context:
+
+```typescript
+// src/lib/ErrorTypes.ts
+export class ApiError extends Error {
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export class NetworkError extends Error {
+  constructor() {
+    super("Network error occurred");
+    this.name = "NetworkError";
+  }
+}
+```
+
+### Utility Functions
+
+Helper functions are organized by concern:
+
+- **i18n utilities** (`src/utils/i18n.ts`): Dictionary loading and locale handling
+- **Animations** (`src/utils/animations.ts`): Reusable animation helpers
+- **Data transformers** (`src/utils/getSoundCloudTracksLinks.ts`, `getYoutubeVideosInfo.ts`): API response processing
+
+## Static Assets
+
+Assets are organized by feature in `src/assets/`:
+
+```
+src/assets/
+├── dj/           # DJ-related images
+├── photo/        # General photography
+├── producer/     # Producer-related media
+├── rrss/         # Social network icons
+└── theme/        # Theme-related assets
+```
+
+## Configuration Files
+
+<Tabs>
+  <Tab title="Astro Config">
+    ```javascript
+    // astro.config.mjs
+    export default defineConfig({
+      site: "https://jowy-portfolio.vercel.app/",
+      vite: {
+        plugins: [tailwindcss()],
+      },
+      integrations: [sitemap(), compress()],
+      i18n: {
+        defaultLocale: defaultLang,
+        locales: locales,
+        routing: {
+          prefixDefaultLocale: false,
+          redirectToDefaultLocale: true,
+        },
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="i18n Config">
+    ```typescript
+    // i18n.config.ts
+    export type Lang = "es" | "en";
+    export const locales: Lang[] = ["es", "en"];
+    export const defaultLang: Lang = "es";
+    ```
+  </Tab>
+  <Tab title="TypeScript Config">
+    ```json
+    // tsconfig.json
+    {
+      "extends": "astro/tsconfigs/strict",
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"]
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<Warning>
+  **Server-Only Code**: Services in `src/server/` are designed to run only during build time. They should never be imported into client-side code.
+</Warning>
+
+<Tip>
+  **Path Aliases**: Use the `@/` alias for imports instead of relative paths:
+  ```typescript
+  import { baseFetcher } from '@/lib/BaseFetcher';
+  ```
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Project Structure" icon="folder-tree" href="/architecture/project-structure">
+    Explore the complete directory structure
+  </Card>
+  <Card title="Routing System" icon="route" href="/architecture/routing">
+    Learn about Astro's routing and i18n
+  </Card>
+</CardGroup>

@@ -1,0 +1,163 @@
+---
+title: "SoundCloud Player"
+description: "Embed SoundCloud tracks with a fully customizable player component"
+---
+
+## Overview
+
+The `SoundCloudPlayer` component provides a responsive iframe-based SoundCloud player with extensive customization options for appearance and behavior. It wraps the SoundCloud widget API with configurable controls for sharing, buying, and downloading.
+
+## Props
+
+<ParamField path="trackUrl" type="string" required>
+  The public URL of the SoundCloud track (e.g., `https://soundcloud.com/user/track-name`)
+</ParamField>
+
+<ParamField path="height" type="string" default="166">
+  Height of the player in pixels. Default `166` is standard for the compact version.
+</ParamField>
+
+<ParamField path="width" type="string" default="100%">
+  Width of the player. Defaults to `100%` for responsive behavior.
+</ParamField>
+
+<ParamField path="loading" type="'lazy' | 'eager'" default="eager">
+  Controls iframe loading behavior. Use `lazy` for below-the-fold players to improve page performance.
+</ParamField>
+
+<ParamField path="buying" type="'true' | 'false'" default="false">
+  Show or hide buy buttons in the player interface.
+</ParamField>
+
+<ParamField path="sharing" type="'true' | 'false'" default="false">
+  Show or hide share buttons in the player interface.
+</ParamField>
+
+<ParamField path="download" type="'true' | 'false'" default="false">
+  Show or hide download buttons in the player interface.
+</ParamField>
+
+## Player Configuration
+
+The component includes several pre-configured SoundCloud widget parameters:
+
+- **Color**: `#d50000` (red accent for play button and controls)
+- **Auto-play**: Disabled by default
+- **Related tracks**: Hidden
+- **Comments**: Shown
+- **User name**: Shown
+- **Reposts**: Hidden
+- **Artwork**: Shown
+- **Play count**: Shown
+- **Visual mode**: Disabled (compact mode)
+
+## Usage Examples
+
+### Basic Track Embed
+
+```astro
+---
+import SoundCloudPlayer from '@/components/SoundCloudPlayer.astro';
+---
+
+<SoundCloudPlayer 
+  trackUrl="https://soundcloud.com/artist/track-name"
+/>
+```
+
+### Lazy Loading with Custom Height
+
+```astro
+<SoundCloudPlayer 
+  trackUrl="https://soundcloud.com/artist/track-name"
+  height="300"
+  loading="lazy"
+/>
+```
+
+### Enable Sharing and Download Options
+
+```astro
+<SoundCloudPlayer 
+  trackUrl="https://soundcloud.com/artist/track-name"
+  sharing="true"
+  download="true"
+  buying="true"
+/>
+```
+
+### Multiple Players on Page
+
+```astro
+<div class="space-y-8">
+  <SoundCloudPlayer 
+    trackUrl="https://soundcloud.com/artist/track-1"
+    loading="eager"
+  />
+  
+  <SoundCloudPlayer 
+    trackUrl="https://soundcloud.com/artist/track-2"
+    loading="lazy"
+  />
+  
+  <SoundCloudPlayer 
+    trackUrl="https://soundcloud.com/artist/track-3"
+    loading="lazy"
+  />
+</div>
+```
+
+<Note>
+  The `single_active` parameter is set to `false`, allowing multiple players on the same page to play independently without stopping each other.
+</Note>
+
+## Styling
+
+The component includes built-in Tailwind CSS classes for styling:
+
+- **Container**: `mx-auto w-full max-w-4xl` (centered, responsive, max-width constraint)
+- **Rounded corners**: `rounded-xl`
+- **Shadow**: `shadow-xl`
+- **Overflow handling**: `overflow-hidden`
+
+You can wrap the component in additional containers to customize the appearance:
+
+```astro
+<div class="my-12 px-4">
+  <SoundCloudPlayer 
+    trackUrl="https://soundcloud.com/artist/track-name"
+  />
+</div>
+```
+
+## Performance Considerations
+
+<Warning>
+  Each SoundCloud player loads the full widget iframe, which can impact page performance. Use `loading="lazy"` for players below the fold.
+</Warning>
+
+### Optimization Tips
+
+1. **Lazy loading**: Set `loading="lazy"` for tracks not immediately visible
+2. **Limit count**: Avoid embedding too many players on a single page
+3. **Progressive loading**: Place most important tracks at the top with eager loading
+
+## Technical Details
+
+### URL Encoding
+
+The component automatically encodes the `trackUrl` using `encodeURIComponent()` to ensure safe URL parameter handling.
+
+### SoundCloud Widget API
+
+The player uses the official SoundCloud widget endpoint:
+```
+https://w.soundcloud.com/player/?url={encodedUrl}&{params}
+```
+
+### Accessibility
+
+The iframe includes a descriptive `title` attribute for screen readers:
+```html
+title="SoundCloud Player for {trackUrl}"
+```

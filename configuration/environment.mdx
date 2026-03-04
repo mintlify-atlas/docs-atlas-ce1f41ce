@@ -1,0 +1,194 @@
+---
+title: Environment Variables
+description: Configure API keys and credentials for Spotify, SoundCloud, YouTube, and Google Calendar integrations
+---
+
+## Overview
+
+Jowy Portfolio uses environment variables to securely store API credentials and configuration values. These variables are accessed via `import.meta.env` in Astro and should be defined in a `.env` file at the root of your project.
+
+<Warning>
+Never commit your `.env` file to version control. Add it to `.gitignore` to keep your credentials secure.
+</Warning>
+
+## Required Environment Variables
+
+### Spotify Integration
+
+Required for displaying Spotify artist information and music content.
+
+<ParamField path="SPOTIFY_CLIENT_ID" type="string" required>
+  Your Spotify application client ID. Get this from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
+</ParamField>
+
+<ParamField path="SPOTIFY_CLIENT_SECRET" type="string" required>
+  Your Spotify application client secret. Keep this confidential.
+</ParamField>
+
+<ParamField path="SPOTIFY_ARTIST_ID" type="string" required>
+  The Spotify artist ID to display music content for. Find this in the Spotify artist URL.
+</ParamField>
+
+### SoundCloud Integration
+
+Required for fetching and displaying SoundCloud tracks.
+
+<ParamField path="SOUNDCLOUD_CLIENT_ID" type="string" required>
+  Your SoundCloud application client ID.
+</ParamField>
+
+<ParamField path="SOUNDCLOUD_CLIENT_SECRET" type="string" required>
+  Your SoundCloud application client secret.
+</ParamField>
+
+<ParamField path="SOUNDCLOUD_AUTHORIZATION" type="string" required>
+  SoundCloud OAuth authorization token for API authentication.
+</ParamField>
+
+<ParamField path="SOUNDCLOUD_USER_ID" type="string" required>
+  The SoundCloud user ID to fetch tracks from. This is parsed as an integer in the application.
+</ParamField>
+
+### YouTube Integration
+
+Required for displaying YouTube playlist content.
+
+<ParamField path="YOUTUBE_API_KEY" type="string" required>
+  Your Google Cloud YouTube Data API v3 key. Enable the YouTube Data API v3 in your Google Cloud Console.
+</ParamField>
+
+<ParamField path="YOUTUBE_PLAYLIST_SET_ID" type="string" required>
+  The YouTube playlist ID to display videos from.
+</ParamField>
+
+### Google Calendar Integration
+
+Required for displaying DJ event calendar.
+
+<ParamField path="GOOGLE_CALENDAR_SRC" type="string" required>
+  The Google Calendar source ID for displaying event schedules.
+</ParamField>
+
+## Setup Instructions
+
+1. Create a `.env` file in the root of your project:
+
+```bash
+touch .env
+```
+
+2. Add your environment variables:
+
+```bash
+# Spotify
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+SPOTIFY_ARTIST_ID=your_spotify_artist_id
+
+# SoundCloud
+SOUNDCLOUD_CLIENT_ID=your_soundcloud_client_id
+SOUNDCLOUD_CLIENT_SECRET=your_soundcloud_client_secret
+SOUNDCLOUD_AUTHORIZATION=your_soundcloud_auth_token
+SOUNDCLOUD_USER_ID=your_soundcloud_user_id
+
+# YouTube
+YOUTUBE_API_KEY=your_youtube_api_key
+YOUTUBE_PLAYLIST_SET_ID=your_youtube_playlist_id
+
+# Google Calendar
+GOOGLE_CALENDAR_SRC=your_google_calendar_src
+```
+
+3. Restart your development server to load the new environment variables.
+
+## Usage in Code
+
+Environment variables are accessed throughout the application using `import.meta.env`:
+
+```typescript
+// src/server/constants.ts
+export const spotifyClientId = import.meta.env.SPOTIFY_CLIENT_ID;
+export const spotifyClientSecret = import.meta.env.SPOTIFY_CLIENT_SECRET;
+export const spotifyArtistId = import.meta.env.SPOTIFY_ARTIST_ID;
+
+export const soundCloudClientID = import.meta.env.SOUNDCLOUD_CLIENT_ID;
+export const soundCloudClientSecret = import.meta.env.SOUNDCLOUD_CLIENT_SECRET;
+export const soundCloudAuthorization = import.meta.env.SOUNDCLOUD_AUTHORIZATION;
+export const soundCloudUserId = parseInt(
+  import.meta.env.SOUNDCLOUD_USER_ID,
+  10
+);
+
+export const youtubeApiKey = import.meta.env.YOUTUBE_API_KEY;
+export const youtubePlaylistSetId = import.meta.env.YOUTUBE_PLAYLIST_SET_ID;
+```
+
+```typescript
+// src/constants/calendar.ts
+export const djGoogleCalendarSrc = import.meta.env.GOOGLE_CALENDAR_SRC;
+```
+
+<Note>
+Astro exposes all environment variables prefixed with `PUBLIC_` to the client-side code. Since these API credentials should remain server-side only, they are not prefixed with `PUBLIC_`.
+</Note>
+
+## Obtaining API Credentials
+
+### Spotify Developer Credentials
+
+1. Visit the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Log in with your Spotify account
+3. Click "Create an App"
+4. Fill in the app name and description
+5. Copy the Client ID and Client Secret
+6. Find your artist ID from a Spotify artist URL (e.g., `spotify:artist:ARTIST_ID`)
+
+### SoundCloud API Credentials
+
+1. Visit [SoundCloud Developers](https://developers.soundcloud.com/)
+2. Register your application
+3. Obtain your Client ID and Client Secret
+4. Generate an authorization token for API access
+5. Find your user ID from your SoundCloud profile URL
+
+### YouTube Data API Key
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the YouTube Data API v3
+4. Create credentials (API Key)
+5. Copy the API key
+6. Get your playlist ID from the YouTube playlist URL
+
+### Google Calendar Source
+
+1. Open Google Calendar
+2. Go to calendar settings
+3. Find the calendar you want to embed
+4. Copy the Calendar ID from the integration section
+
+## Troubleshooting
+
+<Warning>
+If environment variables are not loading, ensure:
+- The `.env` file is in the project root
+- Variable names match exactly (case-sensitive)
+- You've restarted the dev server after adding variables
+- No spaces around the `=` sign in `.env` file
+</Warning>
+
+### Common Issues
+
+**Variables are undefined**
+- Verify the `.env` file exists in the project root
+- Check that variable names don't have typos
+- Restart your development server
+
+**API authentication fails**
+- Verify your credentials are correct and active
+- Check that API keys haven't expired
+- Ensure proper scopes/permissions are set in the API console
+
+**SOUNDCLOUD_USER_ID parsing errors**
+- Ensure the value is a valid integer
+- Remove any quotes or extra characters from the ID

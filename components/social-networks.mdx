@@ -1,0 +1,409 @@
+---
+title: SocialNetworksList
+description: Flexible social media links component with configurable orientation and email integration
+---
+
+## Overview
+
+The `SocialNetworksList` component displays a collection of social media icons with links, supporting multiple layout orientations and optional email contact integration. It's used throughout the Jowy Portfolio for consistent social media presence across different sections (DJ, Producer, Sound Engineer, etc.).
+
+## Props
+
+<ParamField path="socialNetworksList" type="SocialNetworksList" required>
+  Array of social network objects containing name, URL, and image metadata. Each object must conform to the `SocialNetworkLink` interface.
+  
+  **Type Definition:**
+  ```typescript
+  interface SocialNetworkLink {
+    name: string;          // Platform name (e.g., "Instagram")
+    url: string;           // Full URL to social profile
+    imageUrl: ImageMetadata; // Imported icon/logo image
+    class?: string;        // Optional custom CSS classes
+  }
+  
+  type SocialNetworksList = SocialNetworkLink[];
+  ```
+</ParamField>
+
+<ParamField path="orientation" type="'horizontal' | 'vertical' | 'responsive'" default="vertical">
+  Layout direction for the social icons:
+  - `horizontal`: Icons arranged in a row
+  - `vertical`: Icons stacked in a column
+  - `responsive`: Row on mobile/tablet, column on desktop (lg breakpoint)
+</ParamField>
+
+<ParamField path="loadingMode" type="'eager' | 'lazy'" default="eager">
+  Image loading strategy:
+  - `eager`: Load images immediately (recommended for above-fold content)
+  - `lazy`: Defer loading until images are near viewport (recommended for footer)
+</ParamField>
+
+<ParamField path="email" type="string | null" default="null">
+  Optional email address to display as a contact option. When provided, renders a `Mail` component alongside social icons.
+</ParamField>
+
+## Component Behavior
+
+### Orientation Layouts
+
+The component dynamically applies CSS classes based on orientation:
+
+```typescript
+const containerClasses =
+  orientation === "horizontal"
+    ? "flex flex-row items-center justify-center gap-6"
+    : orientation === "vertical"
+      ? "flex flex-col items-center justify-center gap-6"
+      : "flex flex-row lg:flex-col items-center justify-center gap-6";
+```
+
+### Icon Styling
+
+- **Neon Effect**: Icons use the `neon-icon` class for glowing visual effect
+- **Hover Animation**: Scale to 125% on hover with 300ms transition
+- **Consistent Sizing**: All icons are 32px × 32px (h-8 w-8)
+- **External Links**: All links open in new tabs (`target="_blank"`)
+
+## Usage
+
+### Basic Implementation
+
+```astro
+---
+import SocialNetworksList from '@/components/SocialNetworksList.astro';
+import { instagramLogo, youtubeLogo } from '@/constants/icons';
+
+const basicSocialList = [
+  {
+    name: "Instagram",
+    url: "https://www.instagram.com/srjoelj",
+    imageUrl: instagramLogo,
+  },
+  {
+    name: "YouTube",
+    url: "https://www.youtube.com/@Itsjowy/videos",
+    imageUrl: youtubeLogo,
+  },
+];
+---
+
+<SocialNetworksList 
+  socialNetworksList={basicSocialList}
+/>
+```
+
+### With Custom Orientation
+
+```astro
+---
+import SocialNetworksList from '@/components/SocialNetworksList.astro';
+import { djSocialNetworksList } from '@/constants/socialNetworksList';
+---
+
+<SocialNetworksList 
+  socialNetworksList={djSocialNetworksList}
+  orientation="horizontal"
+/>
+```
+
+### With Email Integration
+
+```astro
+---
+import SocialNetworksList from '@/components/SocialNetworksList.astro';
+import { allSocialNetworksList } from '@/constants/socialNetworksList';
+import { djEmail } from '@/constants/email';
+---
+
+<SocialNetworksList 
+  socialNetworksList={allSocialNetworksList}
+  orientation="responsive"
+  email={djEmail}
+/>
+```
+
+Source: `/home/daytona/workspace/source/src/layouts/PageLayout.astro:72`
+
+### Footer Usage (Lazy Loading)
+
+```astro
+---
+import SocialNetworksList from '@/components/SocialNetworksList.astro';
+import { creatorNetworkList } from '@/constants/socialNetworksList';
+import { designerEmail } from '@/constants/email';
+---
+
+<footer>
+  <SocialNetworksListComponent
+    socialNetworksList={creatorNetworkList}
+    orientation="vertical"
+    loadingMode="lazy"
+    email={designerEmail}
+  />
+</footer>
+```
+
+Source: `/home/daytona/workspace/source/src/layouts/PageLayout.astro:115`
+
+## Predefined Social Lists
+
+The project includes several predefined social network lists in `/src/constants/socialNetworksList.ts`:
+
+<Tabs>
+  <Tab title="All Networks">
+    ```typescript
+    export const allSocialNetworksList: SocialNetworksList = [
+      { name: "Instagram", url: "...", imageUrl: instagramLogo },
+      { name: "YouTube", url: "...", imageUrl: youtubeLogo },
+      { name: "SoundCloud", url: "...", imageUrl: soundcloudLogo },
+      { name: "X", url: "...", imageUrl: xLogo, class: "w-full" },
+      { name: "Spotify", url: "...", imageUrl: spotifyLogo },
+      { name: "Apple Music", url: "...", imageUrl: appleLogo },
+      { name: "LinkedIn", url: "...", imageUrl: linkedinLogo },
+    ];
+    ```
+  </Tab>
+  <Tab title="DJ Section">
+    ```typescript
+    export const djSocialNetworksList: SocialNetworksList = [
+      { name: "Instagram", url: "...", imageUrl: instagramLogo },
+      { name: "YouTube", url: "...", imageUrl: youtubeLogo },
+      { name: "SoundCloud", url: "...", imageUrl: soundcloudLogo },
+      { name: "X", url: "...", imageUrl: xLogo, class: "w-full" },
+    ];
+    ```
+  </Tab>
+  <Tab title="Producer Section">
+    ```typescript
+    export const producerSocialNetworksList: SocialNetworksList = [
+      { name: "Instagram", url: "...", imageUrl: instagramLogo },
+      { name: "YouTube", url: "...", imageUrl: youtubeLogo },
+      { name: "SoundCloud", url: "...", imageUrl: soundcloudLogo },
+      { name: "X", url: "...", imageUrl: xLogo, class: "w-full" },
+      { name: "Spotify", url: "...", imageUrl: spotifyLogo },
+      { name: "Apple Music", url: "...", imageUrl: appleLogo },
+    ];
+    ```
+  </Tab>
+  <Tab title="Sound Engineer">
+    ```typescript
+    export const soundSocialNetworksList: SocialNetworksList = [
+      { name: "Instagram", url: "...", imageUrl: instagramLogo },
+      { name: "LinkedIn", url: "...", imageUrl: linkedinLogo },
+    ];
+    ```
+  </Tab>
+  <Tab title="Creator">
+    ```typescript
+    export const creatorNetworkList: SocialNetworksList = [
+      { name: "LinkedIn", url: "...", imageUrl: linkedinLogo },
+      { name: "GitHub", url: "...", imageUrl: githubLogo },
+    ];
+    ```
+  </Tab>
+</Tabs>
+
+## Layout Examples
+
+### Sidebar (Fixed Position)
+
+```astro
+<div class="lg:fixed lg:top-1/2 lg:left-4 flex z-50 lg:-translate-y-1/2">
+  <SocialNetworksList 
+    socialNetworksList={djSocialNetworksList}
+    orientation="responsive"
+    email={djEmail}
+  />
+</div>
+```
+
+This creates a vertical sidebar on desktop that becomes horizontal on mobile.
+
+### Inline Section
+
+```astro
+<section class="flex items-center gap-8">
+  <p>Follow me:</p>
+  <SocialNetworksList 
+    socialNetworksList={djSocialNetworksList}
+    orientation="horizontal"
+  />
+</section>
+```
+
+### Footer Integration
+
+```astro
+<footer class="flex justify-between">
+  <div>Copyright info...</div>
+  <SocialNetworksList 
+    socialNetworksList={creatorNetworkList}
+    orientation="horizontal"
+    loadingMode="lazy"
+  />
+</footer>
+```
+
+## Custom Icon Classes
+
+Some icons may need custom sizing via the optional `class` property:
+
+```typescript
+{
+  name: "X",
+  url: "https://x.com/username",
+  imageUrl: xLogo,
+  class: "w-full" // X logo needs full width for proper aspect ratio
+}
+```
+
+The component applies these custom classes in addition to the default icon styling:
+
+```astro
+class={`neon-icon h-8 w-8 ... ${socialNetwork.class}`}
+```
+
+## Email Integration
+
+When an email is provided, the component renders a `Mail` component alongside the social icons:
+
+```astro
+{
+  socialNetworksList.map((socialNetwork) => (
+    // Social icon rendering
+  ))
+}
+{email && <Mail email={email} />}
+```
+
+The `Mail` component maintains consistent styling with the social icons and typically includes:
+- Email icon with neon effect
+- Mailto link functionality
+- Matching hover animations
+
+## Responsive Behavior
+
+### Orientation: Responsive
+
+When `orientation="responsive"`, the layout adapts:
+
+- **Mobile/Tablet (< 1024px)**: Horizontal row
+- **Desktop (≥ 1024px)**: Vertical column
+
+CSS classes: `flex flex-row lg:flex-col items-center justify-center gap-6`
+
+### Common Use Cases
+
+<Tabs>
+  <Tab title="Page Sidebar">
+    ```astro
+    <!-- Fixed sidebar that adapts to screen size -->
+    <div class="lg:fixed lg:top-1/2 lg:left-4 lg:-translate-y-1/2">
+      <SocialNetworksList 
+        orientation="responsive"
+        socialNetworksList={djSocialNetworksList}
+      />
+    </div>
+    ```
+  </Tab>
+  <Tab title="Mobile Footer">
+    ```astro
+    <!-- Horizontal layout for mobile footer -->
+    <footer class="flex justify-center">
+      <SocialNetworksList 
+        orientation="horizontal"
+        loadingMode="lazy"
+        socialNetworksList={creatorNetworkList}
+      />
+    </div>
+    ```
+  </Tab>
+  <Tab title="Bio Section">
+    ```astro
+    <!-- Vertical list in bio/contact section -->
+    <section>
+      <h2>Connect with me</h2>
+      <SocialNetworksList 
+        orientation="vertical"
+        socialNetworksList={allSocialNetworksList}
+        email={djEmail}
+      />
+    </section>
+    ```
+  </Tab>
+</Tabs>
+
+## Styling Details
+
+### Neon Icon Effect
+
+The component relies on global CSS for the neon glow effect:
+
+```css
+.neon-icon {
+  filter: invert(1) 
+    drop-shadow(0 0 6px var(--neon-glow-color, #ffffff))
+    drop-shadow(0 0 8px var(--neon-glow-color, #ffffff));
+}
+```
+
+This creates:
+- Inverted colors for better visibility on dark backgrounds
+- Dual drop shadows for glowing effect
+- CSS variable support for custom glow colors
+
+### Hover Transitions
+
+```css
+transition-transform duration-300 ease-in-out hover:scale-125
+```
+
+- **Property**: Transform only (optimized for performance)
+- **Duration**: 300ms
+- **Easing**: Ease-in-out for smooth acceleration/deceleration
+- **Scale**: 1.25x on hover
+
+## Performance Considerations
+
+### Image Loading Strategy
+
+- **Above-fold content**: Use `loadingMode="eager"` for immediate visibility
+- **Below-fold content**: Use `loadingMode="lazy"` to reduce initial page load
+- **Critical navigation**: Always use eager loading for main navigation areas
+
+### Icon Optimization
+
+All social media icons should be:
+- SVG format for scalability and small file size
+- Imported through Astro's asset system for optimization
+- Sized appropriately (typically 32×32px or smaller source files)
+
+## Accessibility
+
+### Current Implementation
+
+- Uses semantic `<a>` elements for proper link behavior
+- Opens external links in new tabs
+- Icons include alt text via the Image component
+
+### Recommended Enhancements
+
+```astro
+<a 
+  href={socialNetwork.url} 
+  target="_blank"
+  rel="noopener noreferrer"
+  aria-label={`Visit our ${socialNetwork.name} profile`}
+>
+  <Image
+    src={socialNetwork.imageUrl}
+    alt={`${socialNetwork.name} logo`}
+    class="..."
+    loading={loadingMode}
+  />
+</a>
+```
+
+Adding `rel="noopener noreferrer"` improves security for external links.
+
+Source: `/home/daytona/workspace/source/src/components/SocialNetworksList.astro:1`

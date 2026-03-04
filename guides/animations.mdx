@@ -1,0 +1,444 @@
+---
+title: "Visual Effects & Animations"
+description: "Implement scroll-triggered animations, neon intro sequences, and performance-optimized visual effects using IntersectionObserver"
+---
+
+## Overview
+
+Jowy Portfolio features sophisticated animation systems including scroll-triggered reveal animations, a neon intro sequence, and smooth transitions. All animations are performance-optimized using the IntersectionObserver API and respect user preferences for reduced motion.
+
+## Scroll Reveal Animations
+
+The core animation system uses the `animate-on-scroll` class to reveal elements as they enter the viewport.
+
+### CSS Implementation
+
+```css
+/* Initial state: hidden and translated down */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 0.8s ease-out,
+    transform 0.8s ease-out;
+  will-change: opacity, transform;
+}
+
+/* Visible state: fully opaque at original position */
+.animate-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Respect user preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-on-scroll {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+```
+
+<Accordion title="Why will-change?">
+  The `will-change: opacity, transform;` property hints to the browser that these properties will animate, allowing it to optimize rendering. Use sparingly as it consumes memory.
+</Accordion>
+
+### JavaScript Controller
+
+The `src/utils/animations.ts` file initializes the scroll animation system:
+
+```typescript
+/**
+ * Initializes scroll-triggered reveal animations for elements
+ * with the 'animate-on-scroll' class.
+ * Uses IntersectionObserver for optimal performance.
+ */
+export const initScrollAnimations = () => {
+  // Select elements on current page only
+  const elements = document.querySelectorAll(".animate-on-scroll");
+
+  // Exit early if no animated elements exist
+  if (elements.length === 0) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          // Stop observing once animated (performance)
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    {
+      threshold: 0.15, // Trigger when 15% of element is visible
+    }
+  );
+
+  elements.forEach((el) => observer.observe(el));
+};
+```
+
+<Note>
+  The observer **unobserves** each element after animation to improve performance. Once revealed, elements don't need continuous observation.
+</Note>
+
+### Usage in Components
+
+Simply add the class to any element:
+
+```astro
+<section class="animate-on-scroll w-full">
+  <h2>This section fades in on scroll</h2>
+  <p>Content appears smoothly...</p>
+</section>
+```
+
+<Tabs>
+  <Tab title="Single Element">
+    ```html
+    <div class="animate-on-scroll">
+      <!-- Animates when visible -->
+    </div>
+    ```
+  </Tab>
+  <Tab title="Multiple Sections">
+    ```html
+    <section class="animate-on-scroll">Section 1</section>
+    <section class="animate-on-scroll">Section 2</section>
+    <section class="animate-on-scroll">Section 3</section>
+    ```
+    Each section animates independently
+  </Tab>
+</Tabs>
+
+## Neon Intro Sequence
+
+The landing page features an animated "JOWY" text intro with neon glow effects.
+
+### HTML Structure
+
+```astro
+{
+  isLanding && (
+    <div
+      id="intro-overlay"
+      class="fixed inset-0 z-99999 flex h-full w-full items-center 
+             justify-center bg-black transition-opacity duration-1000 
+             ease-in-out"
+    >
+      <div class="flex h-full w-full items-center justify-center 
+                  overflow-hidden text-6xl font-bold text-white md:text-9xl">
+        <span class="neon-style inline-block translate-y-20 font-extrabold 
+                     opacity-0 transition-all duration-700 ease-out">
+          J
+        </span>
+        <span class="neon-style inline-block translate-y-20 font-extrabold 
+                     opacity-0 transition-all delay-100 duration-700 ease-out">
+          O
+        </span>
+        <span class="neon-style inline-block translate-y-20 font-extrabold 
+                     opacity-0 transition-all delay-200 duration-700 ease-out">
+          W
+        </span>
+        <span class="neon-style inline-block translate-y-20 font-extrabold 
+                     opacity-0 transition-all delay-300 duration-700 ease-out">
+          Y
+        </span>
+      </div>
+    </div>
+  )
+}
+```
+
+<CardGroup cols={4}>
+  <Card title="J" icon="1">
+    0ms delay
+  </Card>
+  <Card title="O" icon="2">
+    100ms delay
+  </Card>
+  <Card title="W" icon="3">
+    200ms delay
+  </Card>
+  <Card title="Y" icon="4">
+    300ms delay
+  </Card>
+</CardGroup>
+
+### Animation Controller
+
+The intro sequence is orchestrated in `BaseLayout.astro`:
+
+```javascript
+document.addEventListener("astro:page-load", () => {
+  const main = document.getElementById("main-wrapper");
+  const navIcons = document.getElementById("nav-icons");
+  const overlay = document.getElementById("intro-overlay");
+  const isLanding = main?.dataset.isLanding === "true";
+
+  if (!isLanding) {
+    (window as any).hasPlayedIntro = false;
+  } else {
+    const chars = document.querySelectorAll("#intro-overlay .neon-style");
+
+    if (!(window as any).hasPlayedIntro) {
+      // 1. Staggered entrance animation
+      setTimeout(() => {
+        chars.forEach((char) => {
+          char.classList.remove("opacity-0", "translate-y-20");
+        });
+      }, 100);
+
+      // 2. Staggered exit animation
+      setTimeout(() => {
+        chars.forEach((char) => {
+          char.classList.add("opacity-0", "translate-y-20");
+        });
+      }, 1300);
+
+      // 3. Fade out overlay, fade in main content
+      setTimeout(() => {
+        if (overlay) overlay.classList.add("opacity-0");
+        if (main) main.classList.remove("opacity-0");
+        if (navIcons) navIcons.classList.remove("opacity-0");
+        window.dispatchEvent(new CustomEvent("intro-reveal"));
+
+        // Remove overlay from DOM after transition
+        setTimeout(() => {
+          if (overlay) overlay.style.display = "none";
+        }, 700);
+      }, 2300); // Total intro duration
+
+      (window as any).hasPlayedIntro = true;
+    } else {
+      // Skip intro if already seen
+      if (overlay) overlay.style.display = "none";
+      if (main) main.classList.remove("opacity-0");
+      if (navIcons) navIcons.classList.remove("opacity-0");
+      window.dispatchEvent(new CustomEvent("intro-reveal"));
+    }
+  }
+});
+```
+
+<Steps>
+  <Step title="Check play state">
+    Use `window.hasPlayedIntro` to ensure intro plays only once per session
+  </Step>
+  <Step title="Entrance (100ms)">
+    Letters slide up and fade in with staggered delays
+  </Step>
+  <Step title="Hold (1200ms)">
+    Full "JOWY" text visible at peak glow
+  </Step>
+  <Step title="Exit (1000ms)">
+    Letters fade out and slide up
+  </Step>
+  <Step title="Reveal content (700ms)">
+    Main page content fades in as overlay fades out
+  </Step>
+</Steps>
+
+## Theme Toggle Animation
+
+The theme button includes a smooth icon crossfade:
+
+```astro
+<button
+  id="theme-toggle"
+  class="transition duration-300 ease-in-out hover:scale-120"
+>
+  <Image
+    id="theme-toggle-icon"
+    class="transition-opacity duration-500 ease-in-out"
+  />
+</button>
+
+<script>
+  toggleButton.addEventListener("click", () => {
+    icon.style.opacity = "0";  // Fade out
+
+    const currentTheme = getCurrentTheme() === "dark" ? "light" : "dark";
+    updateTheme(currentTheme);
+
+    setTimeout(() => {
+      icon.src = THEME_ICONS[currentTheme].src;  // Swap icon
+      icon.style.opacity = "1";  // Fade in
+    }, 200);
+  });
+</script>
+```
+
+<Accordion title="Why setTimeout?">
+  The 200ms delay allows the fade-out animation to complete before swapping the icon source, creating a seamless crossfade effect.
+</Accordion>
+
+## Transition Classes
+
+Common Tailwind transition patterns used throughout:
+
+### Hover Scale
+
+```html
+<div class="transition duration-300 ease-in-out hover:scale-110">
+  Grows 10% on hover
+</div>
+```
+
+### Color Transitions
+
+```html
+<body class="transition-colors duration-500 ease-in-out">
+  Smooth theme color changes
+</body>
+```
+
+### Opacity Fades
+
+```html
+<div class="transition-opacity duration-1000 ease-in-out opacity-0">
+  Fade effect
+</div>
+```
+
+<Tabs>
+  <Tab title="Fast (300ms)">
+    Quick interactions like button hovers
+    ```
+    duration-300
+    ```
+  </Tab>
+  <Tab title="Medium (500ms)">
+    Theme changes and page transitions
+    ```
+    duration-500
+    ```
+  </Tab>
+  <Tab title="Slow (700-1000ms)">
+    Dramatic reveals and overlays
+    ```
+    duration-700
+    duration-1000
+    ```
+  </Tab>
+</Tabs>
+
+## Astro View Transitions
+
+Page navigation uses Astro's built-in transitions:
+
+```html
+<html transition:animate="none">
+  <!-- Disable default animation -->
+</html>
+
+<body transition:animate="fade">
+  <!-- Custom fade transition -->
+</body>
+```
+
+The `ClientRouter` component enables SPA-like navigation:
+
+```astro
+---
+import { ClientRouter } from "astro:transitions";
+---
+<ClientRouter />
+```
+
+## Accessibility Considerations
+
+### Reduced Motion Support
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .animate-on-scroll {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+```
+
+<Warning>
+  Always respect `prefers-reduced-motion`. Users with vestibular disorders or motion sensitivity can experience discomfort from animations.
+</Warning>
+
+### Focus Indicators
+
+Ensure interactive animated elements maintain visible focus states:
+
+```html
+<button class="transition hover:scale-110 focus:ring-2 focus:ring-primary">
+  Accessible animated button
+</button>
+```
+
+## Performance Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use IntersectionObserver" icon="eye">
+    More performant than scroll event listeners. Automatically throttled by browser.
+  </Card>
+  <Card title="Unobserve After Animation" icon="circle-xmark">
+    Stop observing elements once animated to free up resources
+  </Card>
+  <Card title="GPU-Accelerated Properties" icon="microchip">
+    Animate `transform` and `opacity` for best performance (GPU-accelerated)
+  </Card>
+  <Card title="will-change Sparingly" icon="triangle-exclamation">
+    Only use on actively animating elements. Remove after animation completes.
+  </Card>
+</CardGroup>
+
+## Animation Library Integration
+
+The project includes animation libraries for advanced effects:
+
+```json
+{
+  "dependencies": {
+    "framer-motion": "^12.23.12",
+    "gsap": "^3.13.0"
+  }
+}
+```
+
+<Tabs>
+  <Tab title="Framer Motion">
+    React-style declarative animations (if using React components)
+  </Tab>
+  <Tab title="GSAP">
+    Professional-grade timeline animations and complex sequences
+  </Tab>
+</Tabs>
+
+## Debugging Animations
+
+### Check Observer Status
+
+```javascript
+console.log('Animated elements:', document.querySelectorAll('.animate-on-scroll').length);
+```
+
+### Test Threshold
+
+```javascript
+const observer = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      console.log('Intersection ratio:', entry.intersectionRatio);
+    });
+  },
+  { threshold: 0.15 }
+);
+```
+
+### Verify Reduced Motion
+
+```javascript
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+console.log('Reduced motion:', prefersReducedMotion);
+```

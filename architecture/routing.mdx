@@ -1,0 +1,504 @@
+---
+title: Routing System
+description: Learn about Astro's file-based routing and i18n implementation in Jowy Portfolio
+---
+
+Jowy Portfolio uses Astro's powerful file-based routing system with built-in internationalization (i18n) support to create a seamless multi-language experience.
+
+## File-Based Routing
+
+Astro automatically creates routes based on files in the `src/pages/` directory. Each `.astro`, `.md`, or `.ts` file becomes a route.
+
+### Basic Route Structure
+
+```
+src/pages/
+├── [...locale]/         # Dynamic locale routes
+│   ├── index.astro     → / or /en
+│   ├── bio.astro       → /bio or /en/bio
+│   ├── dj.astro        → /dj or /en/dj
+│   ├── producer.astro  → /producer or /en/producer
+│   ├── sound.astro     → /sound or /en/sound
+│   └── 404.astro       → /404 or /en/404
+└── sitemap.xml.ts      → /sitemap.xml
+```
+
+<Note>
+  The `[...locale]` directory uses Astro's rest parameters (`...`) to catch all route segments, enabling dynamic locale handling.
+</Note>
+
+## Internationalization (i18n)
+
+### Configuration
+
+The i18n configuration defines supported languages and routing behavior:
+
+<Tabs>
+  <Tab title="i18n Config">
+    ```typescript
+    // i18n.config.ts
+    export type Lang = "es" | "en";
+    export const locales: Lang[] = ["es", "en"];
+    export const defaultLang: Lang = "es";
+    ```
+    
+    **Exports:**
+    - `Lang`: Type union of supported languages
+    - `locales`: Array of all supported locale codes
+    - `defaultLang`: Default language (Spanish)
+  </Tab>
+  <Tab title="Astro Config">
+    ```javascript
+    // astro.config.mjs
+    import { defaultLang, locales } from './i18n.config';
+    
+    export default defineConfig({
+      i18n: {
+        defaultLocale: defaultLang,
+        locales: locales,
+        routing: {
+          prefixDefaultLocale: false,
+          redirectToDefaultLocale: true,
+        },
+      },
+    });
+    ```
+    
+    **Routing Options:**
+    - `prefixDefaultLocale: false`: Default language uses root path (`/` not `/es`)
+    - `redirectToDefaultLocale: true`: Invalid routes redirect to default locale
+  </Tab>
+</Tabs>
+
+### Generated Routes
+
+With this configuration, the following routes are automatically generated:
+
+<AccordionGroup>
+  <Accordion title="Spanish Routes (Default)">
+    Spanish is the default language and uses unprefixed routes:
+    
+    - `/` - Home page
+    - `/bio` - Biography
+    - `/dj` - DJ portfolio
+    - `/producer` - Music producer
+    - `/sound` - Sound engineer
+    - `/404` - Not found
+  </Accordion>
+  
+  <Accordion title="English Routes">
+    English routes are prefixed with `/en`:
+    
+    - `/en` - Home page
+    - `/en/bio` - Biography
+    - `/en/dj` - DJ portfolio
+    - `/en/producer` - Music producer
+    - `/en/sound` - Sound engineer
+    - `/en/404` - Not found
+  </Accordion>
+</AccordionGroup>
+
+## Dynamic Route Implementation
+
+### Rest Parameters Pattern
+
+The `[...locale]` directory uses rest parameters to capture optional locale prefixes:
+
+```astro
+---
+// src/pages/[...locale]/index.astro
+import { defaultLang, locales } from "@/../i18n.config";
+import { getI18nInfo } from "@/utils/i18n";
+
+// Generate static paths for all locales
+export function getStaticPaths() {
+  return locales.map((lang) => {
+    if (lang === defaultLang) {
+      // Default language: no locale prefix
+      return { params: { locale: undefined } };
+    }
+    // Other languages: include locale prefix
+    return { params: { locale: lang } };
+  });
+}
+
+// Load translations for current locale
+const { dictionary, langParam } = await getI18nInfo(Astro.params.locale);
+const { indexPage } = dictionary;
+---
+
+<BaseLayout
+  title={indexPage.title}
+  lang={langParam}
+  description={indexPage.description}
+>
+  <!-- Page content -->
+</BaseLayout>
+```
+
+**How It Works:**
+
+1. **`getStaticPaths()`** generates routes for each locale:
+   - `es` → `{ locale: undefined }` → `/`
+   - `en` → `{ locale: "en" }` → `/en`
+
+2. **`Astro.params.locale`** contains the locale parameter from the URL
+
+3. **`getI18nInfo()`** loads the appropriate translation dictionary
+
+### Translation Loading
+
+The `getI18nInfo()` utility loads translations based on the current locale:
+
+```typescript
+// src/utils/i18n.ts
+import { type Lang, defaultLang } from "@/../i18n.config";
+import type { Dictionary } from "../dictionaries/es";
+
+const dictionaries = {
+  es: () => import("../dictionaries/es"),
+  en: () => import("../dictionaries/en"),
+};
+
+/**
+ * Load dictionary for specified language
+ */
+const getDictionary = async (locale: Lang): Promise<Dictionary> => {
+  const dictionaryLoader = dictionaries[locale] || dictionaries[defaultLang];
+  const dictionaryModule = await dictionaryLoader();
+  return dictionaryModule.default;
+};
+
+/**
+ * Get i18n info for current page
+ * @param lang - Locale from URL params (undefined for default locale)
+ * @returns Dictionary and normalized language parameter
+ */
+export async function getI18nInfo(lang: string | undefined) {
+  const langParam = (lang || defaultLang) as Lang;
+  const dictionary = await getDictionary(langParam);
+  
+  return { dictionary, langParam };
+}
+```
+
+**Key Features:**
+- **Dynamic imports**: Dictionaries are loaded on-demand
+- **Fallback**: Defaults to `defaultLang` if locale is undefined or invalid
+- **Type safety**: Returns typed `Dictionary` object
+
+## Dictionary Structure
+
+Translations are organized by page and component:
+
+<Tabs>
+  <Tab title="Spanish (es.ts)">
+    ```typescript
+    // src/dictionaries/es.ts
+    export default {
+      indexPage: {
+        title: 'Inicio',
+        description: 'Productor musical · DJ · Sonidista',
+        sections: [
+          {
+            title: 'DJ',
+            href: '/dj',
+            description: 'Sets y presentaciones',
+          },
+          {
+            title: 'Productor',
+            href: '/producer',
+            description: 'Producción musical',
+          },
+          {
+            title: 'Sonidista',
+            href: '/sound',
+            description: 'Ingeniería de audio',
+          },
+        ],
+      },
+      bioPage: {
+        title: 'Biografía',
+        content: '...',
+      },
+      // ... more pages
+    };
+    ```
+  </Tab>
+  <Tab title="English (en.ts)">
+    ```typescript
+    // src/dictionaries/en.ts
+    export default {
+      indexPage: {
+        title: 'Home',
+        description: 'Music Producer · DJ · Sound Engineer',
+        sections: [
+          {
+            title: 'DJ',
+            href: '/en/dj',
+            description: 'Sets and performances',
+          },
+          {
+            title: 'Producer',
+            href: '/en/producer',
+            description: 'Music production',
+          },
+          {
+            title: 'Sound Engineer',
+            href: '/en/sound',
+            description: 'Audio engineering',
+          },
+        ],
+      },
+      bioPage: {
+        title: 'Biography',
+        content: '...',
+      },
+      // ... more pages
+    };
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Notice how English routes include the `/en` prefix in `href` values, while Spanish routes use root paths.
+</Note>
+
+## Language Switching
+
+The `LangSwitcher` component enables users to switch between languages:
+
+```astro
+---
+// src/components/LangSwitcher.astro
+import { locales } from "@/../i18n.config";
+
+const currentPath = Astro.url.pathname;
+const currentLang = Astro.params.locale || 'es';
+
+const getLocalizedPath = (locale: string) => {
+  if (locale === 'es') {
+    // Remove /en prefix for Spanish
+    return currentPath.replace(/^\/en/, '') || '/';
+  }
+  // Add /en prefix for English
+  return `/en${currentPath === '/' ? '' : currentPath}`;
+};
+---
+
+<div class="lang-switcher">
+  {locales.map(locale => (
+    <a 
+      href={getLocalizedPath(locale)}
+      class:list={[locale === currentLang && 'active']}
+    >
+      {locale.toUpperCase()}
+    </a>
+  ))}
+</div>
+```
+
+**Path Transformation:**
+
+| Current Page | Switch To | Result |
+|--------------|-----------|--------|
+| `/dj` (ES) | EN | `/en/dj` |
+| `/en/dj` (EN) | ES | `/dj` |
+| `/` (ES) | EN | `/en` |
+| `/en` (EN) | ES | `/` |
+
+## SEO and Meta Tags
+
+Each page includes localized SEO metadata:
+
+```astro
+---
+// src/layouts/BaseLayout.astro
+const { title, description, lang } = Astro.props;
+const socialImage = new URL(image, Astro.url).href;
+const fullTitle = `${title} | Jowy Portfolio`;
+---
+
+<head>
+  <SEO
+    title={fullTitle}
+    description={description}
+    canonical={Astro.url.href}
+    openGraph={{
+      basic: {
+        title: fullTitle,
+        type: "website",
+        image: socialImage,
+        url: Astro.url.href,
+      },
+      optional: {
+        siteName: "Jowy Portfolio",
+        description: description,
+        locale: lang,
+      },
+    }}
+    twitter={{
+      card: "summary_large_image",
+      title: fullTitle,
+      description: description,
+      image: socialImage,
+    }}
+  />
+</head>
+
+<html lang={lang}>
+  <!-- Content -->
+</html>
+```
+
+**SEO Features:**
+- Localized `<html lang>` attribute
+- Canonical URLs for each language
+- Open Graph locale tags
+- Separate meta descriptions per language
+
+## Sitemap Generation
+
+The sitemap includes all localized routes:
+
+```typescript
+// src/pages/sitemap.xml.ts
+import { locales, defaultLang } from '@/../i18n.config';
+
+export async function get() {
+  const pages = ['', 'bio', 'dj', 'producer', 'sound'];
+  
+  const urls = pages.flatMap(page => 
+    locales.map(locale => {
+      const path = locale === defaultLang 
+        ? `/${page}` 
+        : `/${locale}/${page}`;
+      return `<url><loc>${site}${path}</loc></url>`;
+    })
+  );
+  
+  return {
+    body: `<?xml version="1.0" encoding="UTF-8"?>
+      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        ${urls.join('\n')}
+      </urlset>`,
+  };
+}
+```
+
+## View Transitions
+
+Astro's View Transitions API provides smooth navigation between pages:
+
+```astro
+---
+// src/layouts/BaseLayout.astro
+import { ClientRouter } from "astro:transitions";
+---
+
+<head>
+  <ClientRouter />
+</head>
+
+<html transition:animate="none">
+  <body transition:animate="fade">
+    <!-- Content -->
+  </body>
+</html>
+```
+
+**Features:**
+- Smooth page transitions
+- Persistent state during navigation
+- Works across locale switches
+- No full page reloads
+
+<Warning>
+  View transitions are disabled on the `<html>` element (`transition:animate="none"`) to prevent conflicts with custom intro animations on the landing page.
+</Warning>
+
+## Route Patterns
+
+### Static Routes
+
+All pages use static route generation for optimal performance:
+
+```astro
+export function getStaticPaths() {
+  return locales.map((lang) => {
+    if (lang === defaultLang) {
+      return { params: { locale: undefined } };
+    }
+    return { params: { locale: lang } };
+  });
+}
+```
+
+### Dynamic Data
+
+Even with static routes, pages can load dynamic data at build time:
+
+```astro
+---
+import { soundCloudApi } from '@/server/services/soundcloud';
+
+const tracks = await soundCloudApi.tracks.getFromUser('username');
+---
+```
+
+<Tip>
+  Server services are called during build time, so API data is fetched once and embedded in the static HTML.
+</Tip>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Consistent Paths" icon="link">
+    Always include locale prefixes in non-default language hrefs:
+    ```typescript
+    // ✅ Good
+    href: '/en/bio'
+    
+    // ❌ Bad
+    href: '/bio' // on English page
+    ```
+  </Card>
+  
+  <Card title="Dictionary First" icon="book">
+    Load all text from dictionaries, never hardcode:
+    ```astro
+    <!-- ✅ Good -->
+    <h1>{dictionary.title}</h1>
+    
+    <!-- ❌ Bad -->
+    <h1>About</h1>
+    ```
+  </Card>
+  
+  <Card title="Type Safety" icon="shield">
+    Import dictionary types for autocomplete:
+    ```typescript
+    import type { Dictionary } from '../dictionaries/es';
+    
+    const dict: Dictionary = await getDictionary(lang);
+    ```
+  </Card>
+  
+  <Card title="Canonical URLs" icon="globe">
+    Set canonical URLs for SEO:
+    ```astro
+    <SEO canonical={Astro.url.href} />
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="sitemap" href="/architecture/overview">
+    Learn about the overall system architecture
+  </Card>
+  <Card title="Project Structure" icon="folder-tree" href="/architecture/project-structure">
+    Explore the complete directory structure
+  </Card>
+</CardGroup>

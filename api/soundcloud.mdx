@@ -1,0 +1,405 @@
+---
+title: "SoundCloud API Integration"
+description: "Server-side SoundCloud API service with OAuth2 authentication, user info retrieval, track fetching with pagination, and automatic token caching"
+---
+
+## Overview
+
+The SoundCloud service provides server-side integration with the SoundCloud API using OAuth2 client credentials flow. It manages authentication tokens with automatic caching, retrieves user information, and fetches user tracks with pagination support.
+
+**Source Location**: `src/server/services/soundcloud/`
+
+<Note>
+  This service is designed to run exclusively on the server. Never expose authentication credentials or tokens to the client.
+</Note>
+
+## Service API Object
+
+The service exports a unified API object for organized access to all methods:
+
+```typescript
+import { soundCloudApi } from '@/server/services/soundcloud';
+
+// Access methods via organized structure
+const tracks = await soundCloudApi.tracks.getFromUser('username');
+const userInfo = await soundCloudApi.users.getInfo('username');
+```
+
+**Structure**: `src/server/services/soundcloud/index.ts:9`
+
+```typescript
+export const soundCloudApi = {
+  tracks: {
+    getFromUser: getUserTracks,
+  },
+  users: {
+    getInfo: getUserInfo,
+  },
+};
+```
+
+---
+
+## Authentication
+
+### getSoundCloudToken()
+
+Retrieves a valid SoundCloud access token using OAuth2 client credentials flow. Implements automatic caching with expiration management.
+
+**Location**: `src/server/services/soundcloud/auth.ts:21`
+
+```typescript
+async function getSoundCloudToken(): Promise<string>
+```
+
+#### Returns
+
+<ResponseField name="access_token" type="string" required>
+  Valid SoundCloud access token for API requests
+</ResponseField>
+
+#### Authentication Flow
+
+1. **Cache Check**: Verifies if valid token exists in cache
+2. **Token Request**: If cache is empty/expired, requests new token
+3. **Authorization**: Uses custom headers with client credentials
+4. **Caching**: Stores token with 60-second safety buffer before expiration
+
+#### Request Configuration
+
+<ParamField header="client_id" type="string" required>
+  SoundCloud application client ID
+</ParamField>
+
+<ParamField header="client_secret" type="string" required>
+  SoundCloud application client secret
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Custom authorization header from configuration
+</ParamField>
+
+<ParamField body="grant_type" type="string" required>
+  OAuth2 grant type (URL-encoded form data)
+</ParamField>
+
+#### Response Type: SoundCloudToken
+
+```typescript
+interface SoundCloudToken {
+  access_token: string;    // OAuth2 access token
+  expires_in: number;      // Token lifetime in seconds
+  token_type: string;      // "Bearer"
+  scope: string;           // Granted permission scopes
+}
+```
+
+#### Error Handling
+
+```typescript
+try {
+  const token = await getSoundCloudToken();
+} catch (error) {
+  // Throws: "Fallo en la autenticación de SoundCloud"
+}
+```
+
+<Warning>
+  Requires `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET`, and `SOUNDCLOUD_AUTHORIZATION` environment variables.
+</Warning>
+
+---
+
+## User Methods
+
+### getUserInfo()
+
+Retrieves complete user information by username or user ID. Results are cached for 1 hour.
+
+**Location**: `src/server/services/soundcloud/users.ts:14`
+
+```typescript
+async function getUserInfo(
+  user: string | number
+): Promise<SoundCloudUser | null>
+```
+
+#### Parameters
+
+<ParamField path="user" type="string | number" required>
+  SoundCloud username (string) or numeric user ID
+</ParamField>
+
+#### Returns
+
+<ResponseField name="user" type="SoundCloudUser | null">
+  Complete user object, or `null` if user not found or error occurs
+</ResponseField>
+
+#### Response Type: SoundCloudUser
+
+```typescript
+interface SoundCloudUser {
+  id: number;                  // Unique user ID
+  username: string;            // Display username
+  permalink: string;           // URL-safe username
+  uri: string;                 // API URI
+  avatar_url: string;          // Profile picture URL
+  city: string | null;         // User location city
+  country: string | null;      // User location country
+  followers_count: number;     // Number of followers
+  followings_count: number;    // Number of users followed
+  track_count: number;         // Total tracks uploaded
+  [key: string]: any;          // Additional API fields
+}
+```
+
+#### API Endpoint
+
+```
+GET https://api.soundcloud.com/resolve?url=https://soundcloud.com/{username}
+```
+
+#### Request Headers
+
+<ParamField header="accept" type="string" required>
+  `application/json`
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer {access_token}`
+</ParamField>
+
+#### Example Usage
+
+```typescript
+import { getUserInfo } from '@/server/services/soundcloud/users';
+
+// By username
+const user = await getUserInfo('jowymusic');
+if (user) {
+  console.log(`${user.username} (ID: ${user.id})`);
+  console.log(`Followers: ${user.followers_count}`);
+  console.log(`Tracks: ${user.track_count}`);
+}
+
+// By user ID
+const userById = await getUserInfo(12345678);
+```
+
+#### Error Handling
+
+Returns `null` on errors:
+- User not found
+- Authentication failures
+- Network errors
+- Invalid API responses
+
+---
+
+## Track Methods
+
+### getUserTracks()
+
+Retrieves tracks uploaded by a specific user with pagination support. Results are cached for 1 hour per unique query.
+
+**Location**: `src/server/services/soundcloud/tracks.ts:17`
+
+```typescript
+async function getUserTracks(
+  user: string | number,
+  limit = 10,
+  offset = 0
+): Promise<SoundCloudTrack[] | null>
+```
+
+#### Parameters
+
+<ParamField path="user" type="string | number" required>
+  SoundCloud username (string) or numeric user ID
+</ParamField>
+
+<ParamField query="limit" type="number" default={10}>
+  Maximum number of tracks to return (pagination)
+</ParamField>
+
+<ParamField query="offset" type="number" default={0}>
+  Number of tracks to skip (pagination)
+</ParamField>
+
+#### Returns
+
+<ResponseField name="tracks" type="SoundCloudTrack[] | null">
+  Array of track objects, or `null` if user not found or error occurs
+</ResponseField>
+
+#### Response Type: SoundCloudTrack
+
+```typescript
+interface SoundCloudTrack {
+  kind: "track";               // Resource type identifier
+  id: number;                  // Unique track ID
+  urn: string;                 // Uniform Resource Name
+  created_at: string;          // ISO 8601 timestamp
+  duration: number;            // Track duration in milliseconds
+  title: string;               // Track title
+  description: string | null;  // Track description
+  genre: string;               // Genre classification
+  tag_list: string;            // Space-separated tags
+  permalink_url: string;       // Public track URL
+  artwork_url: string | null;  // Cover art image URL
+  stream_url: string;          // Streaming endpoint
+  waveform_url: string;        // Waveform visualization URL
+  user: SoundCloudUser;        // Track creator information
+  playback_count: number;      // Total plays
+  download_count: number;      // Total downloads
+  favoritings_count: number;   // Total favorites/likes
+  comment_count: number;       // Total comments
+  streamable: boolean;         // Streaming availability
+  downloadable: boolean;       // Download availability
+  [key: string]: any;          // Additional API fields
+}
+```
+
+#### API Endpoint
+
+```
+GET https://api.soundcloud.com/users/{user_id}/tracks?limit={limit}&offset={offset}
+```
+
+#### Request Headers
+
+<ParamField header="accept" type="string" required>
+  `application/json`
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer {access_token}`
+</ParamField>
+
+#### Example Usage
+
+```typescript
+import { getUserTracks } from '@/server/services/soundcloud/tracks';
+
+// Get first 10 tracks
+const tracks = await getUserTracks('jowymusic', 10, 0);
+
+if (tracks) {
+  tracks.forEach(track => {
+    console.log(`${track.title} by ${track.user.username}`);
+    console.log(`Plays: ${track.playback_count}`);
+    console.log(`Duration: ${track.duration}ms`);
+    console.log(`URL: ${track.permalink_url}`);
+  });
+}
+
+// Pagination: Get next 10 tracks
+const moreTracks = await getUserTracks('jowymusic', 10, 10);
+
+// Get tracks by user ID
+const tracksByID = await getUserTracks(12345678, 20);
+```
+
+#### Implementation Details
+
+1. **User Resolution**: If username provided, calls `getUserInfo()` to resolve to user ID
+2. **Cache Check**: Verifies cache using key pattern `user_tracks_{userId}_limit{limit}_offset{offset}`
+3. **Token Retrieval**: Obtains valid access token via `getSoundCloudToken()`
+4. **API Request**: Fetches tracks from SoundCloud API
+5. **Cache Storage**: Stores results for 1 hour
+
+#### Error Handling
+
+Returns `null` on errors:
+- User not found (invalid username/ID)
+- Authentication failures
+- Network errors
+- Invalid pagination parameters
+
+```typescript
+const tracks = await getUserTracks('nonexistent_user');
+if (!tracks) {
+  console.error('Failed to retrieve tracks or user not found');
+}
+```
+
+---
+
+## Caching Strategy
+
+### Token Caching
+
+<ParamField query="cache_key" type="string">
+  `"soundcloud_token"`
+</ParamField>
+
+<ParamField query="duration" type="number">
+  `expires_in - 60` seconds (60-second safety buffer)
+</ParamField>
+
+### User Info Caching
+
+<ParamField query="cache_key" type="string">
+  `"user_{username}"`
+</ParamField>
+
+<ParamField query="duration" type="number">
+  3600 seconds (1 hour)
+</ParamField>
+
+### User Tracks Caching
+
+<ParamField query="cache_key" type="string">
+  `"user_tracks_{userId}_limit{limit}_offset{offset}"`
+</ParamField>
+
+<ParamField query="duration" type="number">
+  3600 seconds (1 hour)
+</ParamField>
+
+<Info>
+  Caching is implemented using `getFromCache` and `setInCache` utilities from `@/server/services/cache`. Each unique pagination query is cached separately.
+</Info>
+
+---
+
+## Environment Variables
+
+<ParamField path="SOUNDCLOUD_CLIENT_ID" type="string" required>
+  SoundCloud application client ID from [SoundCloud Developer Portal](https://developers.soundcloud.com/)
+</ParamField>
+
+<ParamField path="SOUNDCLOUD_CLIENT_SECRET" type="string" required>
+  SoundCloud application client secret
+</ParamField>
+
+<ParamField path="SOUNDCLOUD_AUTHORIZATION" type="string" required>
+  Custom authorization header value for OAuth2 flow
+</ParamField>
+
+<ParamField path="SOUNDCLOUD_URL_GET_TOKEN" type="string" required>
+  SoundCloud OAuth2 token endpoint URL
+</ParamField>
+
+---
+
+## Error Messages
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Fallo en la autenticación de SoundCloud" | Token request failed | Verify client credentials and authorization header |
+| "Se requiere un nombre de usuario" | Empty username parameter | Provide valid username or user ID |
+| "No se pudo encontrar al usuario {user}" | User doesn't exist | Verify username spelling and existence |
+| Method returns `null` | API request failed | Check logs for specific error details |
+
+---
+
+## Dependencies
+
+- `@/lib/BaseFetcher` - HTTP request wrapper
+- `@/server/constants` - Environment variable configuration
+- `@/server/services/cache` - Token and response caching
+- `@/types/soundcloud/token.d` - Type definitions for token response
+- `@/types/soundcloud/track.d` - Type definitions for track objects
+- `@/types/soundcloud/user.d` - Type definitions for user objects

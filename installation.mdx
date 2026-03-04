@@ -1,0 +1,638 @@
+---
+title: Installation
+description: Complete installation guide covering local development, production deployment, API configuration, and CI/CD setup
+---
+
+# Installation
+
+This comprehensive guide covers everything you need to install, configure, and deploy Jowy Portfolio in both development and production environments.
+
+## System Requirements
+
+### Minimum Requirements
+
+- **Node.js**: 18.0.0 or higher
+- **Package Manager**: npm, yarn, or pnpm
+- **Git**: Latest stable version
+- **Operating System**: macOS, Linux, or Windows (with WSL recommended)
+
+### Recommended Setup
+
+- **Node.js**: 20.x LTS
+- **Package Manager**: pnpm (for faster installs and better monorepo support)
+- **Editor**: VS Code with Astro extension
+- **Terminal**: iTerm2 (macOS), Windows Terminal, or similar
+
+## Local Development Setup
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the project from GitHub:
+
+    ```bash
+    git clone https://github.com/mrcl29/jowy-portfolio.git
+    cd jowy-portfolio
+    ```
+
+    Verify the repository structure:
+
+    ```bash
+    ls -la
+    ```
+
+    You should see:
+    ```
+    ├── .github/          # GitHub Actions workflows
+    ├── public/           # Static assets
+    ├── src/              # Source code
+    │   ├── components/   # Astro components
+    │   ├── layouts/      # Page layouts
+    │   ├── lib/          # Utilities (BaseFetcher, etc.)
+    │   ├── server/       # Server-side services
+    │   └── types/        # TypeScript definitions
+    ├── astro.config.mjs  # Astro configuration
+    ├── package.json      # Dependencies
+    └── tsconfig.json     # TypeScript config
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all project dependencies:
+
+    <CodeGroup>
+
+    ```bash npm
+    npm install
+    ```
+
+    ```bash yarn
+    yarn install
+    ```
+
+    ```bash pnpm
+    pnpm install
+    ```
+
+    </CodeGroup>
+
+    Key dependencies from `package.json:11-25`:
+
+    ```json
+    {
+      "dependencies": {
+        "astro": "^5.15.9",
+        "tailwindcss": "^4.1.17",
+        "@astrojs/sitemap": "^3.5.1",
+        "@vercel/analytics": "^1.6.1",
+        "@vercel/speed-insights": "^1.3.1",
+        "daisyui": "^5.5.5",
+        "framer-motion": "^12.23.12",
+        "gsap": "^3.13.0"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the project root:
+
+    ```bash
+    touch .env
+    ```
+
+    Add the following environment variables:
+
+    ```env .env
+    # =================================
+    # Spotify API Configuration
+    # =================================
+    SPOTIFY_CLIENT_ID=your_spotify_client_id_here
+    SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
+
+    # =================================
+    # SoundCloud API Configuration
+    # =================================
+    SOUNDCLOUD_CLIENT_ID=your_soundcloud_client_id_here
+
+    # =================================
+    # YouTube API Configuration
+    # =================================
+    YOUTUBE_API_KEY=your_youtube_api_key_here
+
+    # =================================
+    # Google Calendar API (Optional)
+    # =================================
+    GOOGLE_CALENDAR_API_KEY=your_google_calendar_api_key
+    GOOGLE_CALENDAR_ID=your_calendar_id@group.calendar.google.com
+
+    # =================================
+    # Deployment Configuration
+    # =================================
+    PUBLIC_SITE_URL=http://localhost:4321
+    ```
+
+    <Warning>
+      The `.env` file is gitignored by default. Never commit API credentials to version control.
+    </Warning>
+
+    ### Obtaining API Credentials
+
+    <AccordionGroup>
+      <Accordion title="Spotify API Setup">
+        1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+        2. Log in with your Spotify account
+        3. Click **Create an App**
+        4. Fill in app name and description
+        5. Copy the **Client ID** and **Client Secret**
+
+        The Spotify service uses OAuth 2.0 Client Credentials flow:
+
+        ```typescript
+        // src/server/services/spotify/auth.ts:23-29
+        const authString = Buffer.from(
+          `${spotifyClientId}:${spotifyClientSecret}`
+        ).toString("base64");
+
+        const headers = {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${authString}`,
+        };
+        ```
+      </Accordion>
+
+      <Accordion title="SoundCloud API Setup">
+        1. Visit [SoundCloud Developers](https://soundcloud.com/you/apps)
+        2. Click **Register a new app**
+        3. Provide app details
+        4. Copy the **Client ID**
+
+        SoundCloud tokens are cached for 1 hour:
+
+        ```typescript
+        // src/server/services/soundcloud/tracks.ts:8
+        const USER_TRACKS_CACHE_DURATION_SECONDS = 3600; // 1 hour
+        ```
+      </Accordion>
+
+      <Accordion title="YouTube API Setup">
+        1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+        2. Create a new project or select existing
+        3. Enable **YouTube Data API v3**
+        4. Navigate to **Credentials** → **Create Credentials** → **API Key**
+        5. Copy the API key
+
+        YouTube playlist data is fetched with caching:
+
+        ```typescript
+        // src/server/services/youtube/playlist.ts:24
+        const tracksURL = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${playlistId}&maxResults=${maxResults}&part=${part}&key=${youtubeApiKey}`;
+        ```
+      </Accordion>
+
+      <Accordion title="Google Calendar API (Optional)">
+        1. In [Google Cloud Console](https://console.cloud.google.com/)
+        2. Enable **Google Calendar API**
+        3. Create API credentials
+        4. Make your calendar public or share with the service account
+        5. Copy the Calendar ID from calendar settings
+      </Accordion>
+    </AccordionGroup>
+  </Step>
+
+  <Step title="Start Development Server">
+    Launch the development server:
+
+    ```bash
+    npm run dev
+    ```
+
+    The server configuration from `astro.config.mjs:14-17`:
+
+    ```typescript
+    server: {
+      host: true,  // Exposes to local network (0.0.0.0)
+      port: 4321,
+    },
+    ```
+
+    Expected output:
+    ```bash
+    🚀 astro v5.15.9 started in 243ms
+
+    ┃ Local    http://localhost:4321/
+    ┃ Network  http://192.168.1.100:4321/
+    ```
+
+    <Note>
+      The `host: true` setting allows you to test on mobile devices via your local network IP.
+    </Note>
+  </Step>
+
+  <Step title="Verify Installation">
+    Open [http://localhost:4321](http://localhost:4321) and verify:
+
+    - ✅ Landing page loads with neon animations
+    - ✅ Three sections visible: DJ, JOWY, Sound Designer
+    - ✅ Language switcher works (ES/EN)
+    - ✅ Dark mode is active
+    - ✅ No console errors
+
+    Test API integrations by navigating to each section and checking that external content loads.
+  </Step>
+</Steps>
+
+## Production Deployment
+
+### Vercel Deployment (Recommended)
+
+Jowy Portfolio is optimized for Vercel deployment with built-in analytics and edge functions.
+
+<Steps>
+  <Step title="Prepare for Deployment">
+    Ensure your repository is pushed to GitHub:
+
+    ```bash
+    git add .
+    git commit -m "Prepare for deployment"
+    git push origin main
+    ```
+  </Step>
+
+  <Step title="Connect to Vercel">
+    1. Visit [Vercel Dashboard](https://vercel.com/dashboard)
+    2. Click **Add New Project**
+    3. Import your GitHub repository
+    4. Vercel will auto-detect the Astro framework
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    In the Vercel project settings, add all environment variables from your `.env` file:
+
+    1. Go to **Settings** → **Environment Variables**
+    2. Add each variable individually
+    3. Apply to **Production**, **Preview**, and **Development** environments
+
+    <Warning>
+      For production, update `PUBLIC_SITE_URL` to your actual domain:
+      ```env
+      PUBLIC_SITE_URL=https://jowysound.com
+      ```
+    </Warning>
+  </Step>
+
+  <Step title="Deploy">
+    Click **Deploy** to start the build process.
+
+    Vercel will:
+    1. Clone your repository
+    2. Install dependencies
+    3. Run `astro build`
+    4. Deploy to edge network
+
+    Build settings are automatically detected from `package.json:7`:
+
+    ```json
+    {
+      "scripts": {
+        "build": "astro build"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Configure Custom Domain (Optional)">
+    Add a custom domain in Vercel settings:
+
+    1. Go to **Settings** → **Domains**
+    2. Add your domain
+    3. Configure DNS records as instructed
+    4. Update `astro.config.mjs:10`:
+
+    ```typescript
+    export default defineConfig({
+      site: "https://yourdomain.com",
+      // ...
+    });
+    ```
+  </Step>
+</Steps>
+
+## Automated Weekly Rebuilds
+
+Jowy Portfolio includes GitHub Actions workflow for automated weekly rebuilds, ensuring fresh content from external APIs.
+
+### Setup CI/CD Pipeline
+
+<Steps>
+  <Step title="Get Vercel Deploy Hook">
+    In Vercel project settings:
+
+    1. Navigate to **Settings** → **Git** → **Deploy Hooks**
+    2. Create a new hook named "Weekly Rebuild"
+    3. Select the branch (usually `main`)
+    4. Copy the generated webhook URL
+  </Step>
+
+  <Step title="Add GitHub Secret">
+    In your GitHub repository:
+
+    1. Go to **Settings** → **Secrets and variables** → **Actions**
+    2. Click **New repository secret**
+    3. Name: `VERCEL_DEPLOY_HOOK`
+    4. Value: Paste the webhook URL from Vercel
+    5. Click **Add secret**
+  </Step>
+
+  <Step title="Verify Workflow">
+    The workflow is already configured in `.github/workflows/rebuild.yml:1-14`:
+
+    ```yaml
+    name: Reconstrucción Semanal
+    on:
+      schedule:
+        # Runs every Monday at 8:00 AM UTC
+        - cron: "0 8 * * 1"
+      workflow_dispatch:  # Allows manual triggering
+
+    jobs:
+      trigger_deploy:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Llamar al Deploy Hook de Vercel
+            run: curl -X POST ${{ secrets.VERCEL_DEPLOY_HOOK }}
+    ```
+
+    The schedule can be modified using [crontab.guru](https://crontab.guru/).
+  </Step>
+
+  <Step title="Test Manual Trigger">
+    Test the workflow manually:
+
+    1. Go to **Actions** tab in GitHub
+    2. Select **Reconstrucción Semanal** workflow
+    3. Click **Run workflow**
+    4. Verify deployment starts in Vercel
+  </Step>
+</Steps>
+
+<Note>
+  During each weekly rebuild, the build process fetches fresh data from Spotify, SoundCloud, YouTube, and Google Calendar APIs, keeping the site automatically updated.
+</Note>
+
+## Understanding the Caching System
+
+### Server-Side Cache Implementation
+
+The caching system prevents excessive API calls and improves performance:
+
+```typescript
+// src/server/services/cache.ts:1-41
+import type { CachedItem } from "@/types/cache.d";
+
+const apiCache = new Map<string, CachedItem<any>>();
+
+export function getFromCache<T>(key: string): T | null {
+  const cached = apiCache.get(key);
+  if (cached && cached.expiresAt > Date.now() / 1000) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+export function setInCache<T>(
+  key: string,
+  data: T,
+  durationSeconds: number
+): void {
+  const expiresAt = Date.now() / 1000 + durationSeconds;
+  apiCache.set(key, { data, expiresAt });
+}
+```
+
+### Cache Duration by Service
+
+Different services use different cache durations:
+
+| Service | Cache Duration | Location |
+|---------|----------------|----------|
+| Spotify Token | `expires_in - 60s` | `src/server/services/spotify/auth.ts:42` |
+| SoundCloud Tracks | 3600s (1 hour) | `src/server/services/soundcloud/tracks.ts:8` |
+| YouTube Playlist | 3600s (1 hour) | `src/server/services/youtube/playlist.ts:7` |
+
+### Cache Keys
+
+Cache keys are constructed to include parameters:
+
+```typescript
+// src/server/services/soundcloud/tracks.ts:41
+const cacheKey = `user_tracks_${userId}_limit${limit}_offset${offset}`;
+
+// src/server/services/youtube/playlist.ts:17
+const cacheKey = `youtube_playlist_${playlistId}_maxresults${maxResults}_part${part}`;
+```
+
+This ensures different query parameters generate unique cache entries.
+
+## BaseFetcher Pattern
+
+All API calls go through the `BaseFetcher` abstraction:
+
+```typescript
+// src/lib/BaseFetcher.ts:20-66
+export async function baseFetcher<T>(
+  url: string,
+  options: FetcherOptions = {}
+): Promise<T> {
+  try {
+    const response = await fetch(url, { ...options });
+
+    if (response.ok) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return (await response.json()) as T;
+      }
+      return null as T;
+    }
+
+    // Handle HTTP errors (4xx and 5xx)
+    let errorMessage = `Fallo en la petición a ${url}. Status: ${response.status}`;
+    try {
+      const errorBody = await response.json();
+      if (errorBody.message) {
+        errorMessage = errorBody.message;
+      }
+    } catch (e) {
+      errorMessage = `${response.status} ${response.statusText}`;
+    }
+
+    throw new ApiError(errorMessage, response.status);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new NetworkError();
+  }
+}
+```
+
+### Custom Error Types
+
+The BaseFetcher uses custom error classes:
+
+```typescript
+// src/lib/ErrorTypes.ts:6-16
+export class ApiError extends Error {
+  public status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
+// src/lib/ErrorTypes.ts:18-24
+export class NetworkError extends Error {
+  constructor(message = 'Error de conexión de red o timeout.') {
+    super(message);
+    this.name = 'NetworkError';
+    Object.setPrototypeOf(this, NetworkError.prototype);
+  }
+}
+```
+
+This enables precise error handling throughout the application.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails with API errors">
+    If the build fails due to API errors:
+
+    1. Verify all environment variables are set correctly
+    2. Check API credentials are still valid
+    3. Ensure API rate limits haven't been exceeded
+    4. Test API endpoints manually using curl or Postman
+
+    Most API errors are logged to console with context:
+
+    ```typescript
+    // Example from src/server/services/spotify/auth.ts:45-48
+    catch (error) {
+      console.error("Error al obtener token de Spotify:", error);
+      throw new Error("Fallo en la autenticación de Spotify");
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Port conflicts">
+    If port 4321 is already in use:
+
+    ```typescript
+    // astro.config.mjs:14-17
+    server: {
+      host: true,
+      port: 3000,  // Change to available port
+    },
+    ```
+  </Accordion>
+
+  <Accordion title="TypeScript errors">
+    Ensure you're using Node.js 18+:
+
+    ```bash
+    node --version
+    ```
+
+    If using older Node.js:
+
+    ```bash
+    # Using nvm
+    nvm install 20
+    nvm use 20
+    ```
+  </Accordion>
+
+  <Accordion title="Module resolution errors">
+    The project uses path aliases defined in `tsconfig.json`:
+
+    ```json
+    {
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["src/*"]
+        }
+      }
+    }
+    ```
+
+    If imports fail, verify the alias is configured correctly.
+  </Accordion>
+
+  <Accordion title="Vercel deployment fails">
+    Common Vercel deployment issues:
+
+    1. **Build command not found**: Verify `package.json` has `build` script
+    2. **Environment variables missing**: Double-check all vars are set in Vercel
+    3. **Node version mismatch**: Add `.nvmrc` or `engines` in `package.json`:
+
+    ```json
+    {
+      "engines": {
+        "node": ">=18.0.0"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Additional Configuration
+
+### Customizing Site Metadata
+
+Update site information in `astro.config.mjs:10`:
+
+```typescript
+export default defineConfig({
+  site: "https://yourdomain.com",  // Your production URL
+  // ...
+});
+```
+
+### Configuring Internationalization
+
+Modify language settings in `i18n.config.ts:1-4`:
+
+```typescript
+export type Lang = "es" | "en" | "fr";  // Add more languages
+export const locales: Lang[] = ["es", "en", "fr"];
+export const defaultLang: Lang = "es";
+```
+
+Don't forget to add translation dictionaries in `src/dictionaries/`.
+
+### Adjusting Cache Durations
+
+Modify cache durations in service files:
+
+```typescript
+// src/server/services/soundcloud/tracks.ts:8
+const USER_TRACKS_CACHE_DURATION_SECONDS = 7200; // 2 hours instead of 1
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Guide" icon="sitemap" href="/architecture/overview">
+    Deep dive into the service layer, caching system, and BaseFetcher pattern
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/base-fetcher">
+    Complete reference for all services and utility functions
+  </Card>
+</CardGroup>
+
+<Note>
+  For questions or issues, visit the [GitHub repository](https://github.com/mrcl29/jowy-portfolio) to open an issue or discussion.
+</Note>

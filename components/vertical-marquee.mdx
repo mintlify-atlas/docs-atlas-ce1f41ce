@@ -1,0 +1,483 @@
+---
+title: "Vertical Marquee"
+description: "An animated vertical scrolling text marquee component with customizable speed, positioning, and neon glow effects for decorative background elements."
+---
+
+The VerticalMarquee component creates a continuously scrolling vertical text animation that can be positioned on either side of the viewport. Perfect for adding dynamic, decorative text elements to your portfolio or landing pages.
+
+## Features
+
+- **Infinite Vertical Scrolling**: Seamless continuous animation
+- **Dual-Side Positioning**: Place on left or right side of viewport
+- **Customizable Speed**: Control animation duration
+- **Neon Glow Effect**: Optional text shadow with custom color
+- **Vertical Text Mode**: Japanese/Matrix-style vertical writing
+- **Responsive Visibility**: Hidden on smaller screens (< 1455px)
+- **Non-Interactive**: Pointer events disabled for background decoration
+- **Auto-Duplication**: Automatically repeats text for seamless loop
+
+## Usage
+
+### Basic Implementation
+
+```astro
+---
+import VerticalMarquee from '@/components/VerticalMarquee.astro';
+---
+
+<VerticalMarquee 
+  text="DEVELOPER" 
+  side="left"
+/>
+```
+
+### With Custom Speed
+
+```astro
+<VerticalMarquee 
+  text="CREATIVE PORTFOLIO" 
+  side="right"
+  speed="60s"
+/>
+```
+
+### With Neon Glow
+
+```astro
+<VerticalMarquee 
+  text="DESIGNER" 
+  side="left"
+  speed="90s"
+  neonGlowColor="#00ffff"
+/>
+```
+
+### Dual Marquees
+
+```astro
+<!-- Left side -->
+<VerticalMarquee 
+  text="FULL STACK" 
+  side="left"
+  neonGlowColor="#ff00ff"
+/>
+
+<!-- Right side -->
+<VerticalMarquee 
+  text="ENGINEER" 
+  side="right"
+  neonGlowColor="#00ff00"
+/>
+```
+
+## Props
+
+<ParamField path="text" type="string" required>
+  The text content to display in the scrolling marquee. This will be automatically repeated 10 times with bullet separators.
+</ParamField>
+
+<ParamField path="side" type="'left' | 'right'" required>
+  Which side of the viewport to position the marquee. Controls both positioning and rotation.
+</ParamField>
+
+<ParamField path="speed" type="string" default="'120s'">
+  The duration of one complete scroll cycle. Accepts any valid CSS time value (e.g., '60s', '2m', '5000ms').
+</ParamField>
+
+<ParamField path="neonGlowColor" type="string">
+  Optional hex color for the neon glow effect. When provided, applies a multi-layer text shadow. Example: '#00ffff', '#ff00ff'
+</ParamField>
+
+## Positioning
+
+### Side-Based Layout
+
+<Tabs>
+  <Tab title="Left Side">
+    ```astro
+    <VerticalMarquee text="TEXT" side="left" />
+    ```
+    - Uses `left-50` utility class
+    - No rotation applied
+    - Scrolls from bottom to top
+  </Tab>
+  <Tab title="Right Side">
+    ```astro
+    <VerticalMarquee text="TEXT" side="right" />
+    ```
+    - Uses `right-50` utility class
+    - Applies `rotate-180` class
+    - Creates mirror effect
+  </Tab>
+</Tabs>
+
+### Position Classes
+
+```javascript
+const positionClass = side === "left" ? "left-50" : "right-50";
+const rotationClass = side === "right" ? "rotate-180" : "";
+```
+
+### Fixed Positioning
+
+The component uses fixed positioning to stay in place during scroll:
+
+```css
+position: fixed;
+top: 0;
+bottom: 0;
+width: 30rem; /* w-30 */
+overflow: hidden;
+```
+
+## Text Duplication
+
+The text is automatically repeated to ensure seamless scrolling:
+
+```javascript
+const content = Array(10).fill(text).join(" • ");
+```
+
+### Example Output
+
+Input: `text="DEVELOPER"`
+
+Generated: `DEVELOPER • DEVELOPER • DEVELOPER • DEVELOPER • ...` (10 times)
+
+## Styling
+
+### Container Classes
+
+```css
+hidden min-[1455px]:block  /* Responsive visibility */
+fixed top-0 bottom-0       /* Full height positioning */
+w-30                       /* Fixed width */
+z-0                        /* Behind other content */
+overflow-hidden            /* Clip overflowing content */
+pointer-events-none        /* Non-interactive */
+select-none                /* Prevent text selection */
+opacity-60                 /* Semi-transparent */
+```
+
+### Text Styling
+
+```css
+font-size: 6rem;
+font-weight: bold;
+text-transform: uppercase;
+white-space: nowrap;
+```
+
+### Vertical Writing Mode
+
+```css
+.writing-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+```
+
+<Note>
+  The `vertical-rl` mode creates the distinctive Japanese/Matrix-style vertical text effect.
+</Note>
+
+## Neon Glow Effect
+
+### Glow Implementation
+
+When `neonGlowColor` is provided:
+
+```javascript
+const textShadow = neonGlowColor
+  ? `0 0 5px ${neonGlowColor}, 0 0 10px ${neonGlowColor}, 0 0 20px ${neonGlowColor}`
+  : "none";
+
+const textColor = neonGlowColor || "#fff";
+```
+
+### Multi-Layer Shadow
+
+The glow uses three shadow layers for depth:
+
+1. **Inner Glow**: 5px blur radius
+2. **Middle Glow**: 10px blur radius
+3. **Outer Glow**: 20px blur radius
+
+### Color Examples
+
+<CodeGroup>
+```astro Cyan Glow
+<VerticalMarquee 
+  text="CYBER" 
+  side="left"
+  neonGlowColor="#00ffff"
+/>
+```
+
+```astro Magenta Glow
+<VerticalMarquee 
+  text="NEON" 
+  side="right"
+  neonGlowColor="#ff00ff"
+/>
+```
+
+```astro Green Glow
+<VerticalMarquee 
+  text="MATRIX" 
+  side="left"
+  neonGlowColor="#00ff00"
+/>
+```
+</CodeGroup>
+
+## Animation
+
+### Scroll Animation
+
+The component uses CSS keyframe animation:
+
+```css
+.track {
+  display: flex;
+  flex-direction: column;
+  animation: scrollUp var(--speed) linear infinite;
+}
+
+@keyframes scrollUp {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+```
+
+### Seamless Loop Logic
+
+The content is duplicated twice in the DOM:
+
+```astro
+<div class="track">
+  <div class="content">
+    <!-- First copy -->
+  </div>
+  <div class="content">
+    <!-- Second copy -->
+  </div>
+</div>
+```
+
+When the animation reaches -50% (one full content height), it seamlessly loops back to the start.
+
+### Speed Customization
+
+<Tabs>
+  <Tab title="Slow">
+    ```astro
+    <VerticalMarquee text="SLOW" side="left" speed="180s" />
+    ```
+    Gentle, relaxed scrolling
+  </Tab>
+  <Tab title="Medium (Default)">
+    ```astro
+    <VerticalMarquee text="MEDIUM" side="left" speed="120s" />
+    ```
+    Balanced, noticeable movement
+  </Tab>
+  <Tab title="Fast">
+    ```astro
+    <VerticalMarquee text="FAST" side="left" speed="60s" />
+    ```
+    Quick, energetic scrolling
+  </Tab>
+</Tabs>
+
+## Responsive Behavior
+
+### Breakpoint
+
+The marquee is hidden on screens smaller than 1455px:
+
+```css
+hidden min-[1455px]:block
+```
+
+### Why This Breakpoint?
+
+- Prevents interference with main content on smaller screens
+- Ensures adequate horizontal space for 30rem (480px) wide marquees
+- Maintains clean mobile/tablet experience
+
+<Note>
+  The marquee is purely decorative and doesn't contain essential content, making it safe to hide on smaller viewports.
+</Note>
+
+## Layout Considerations
+
+### Z-Index
+
+The component uses `z-0` to stay behind interactive content:
+
+```css
+z-0  /* Behind main content */
+```
+
+Ensure your main content container has a higher z-index if needed.
+
+### Pointer Events
+
+```css
+pointer-events-none
+```
+
+This allows clicks to pass through to content below the marquee.
+
+### Text Selection
+
+```css
+select-none
+```
+
+Prevents users from accidentally selecting the decorative text.
+
+## Content Spacing
+
+### Gap Between Items
+
+```css
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 2rem;
+}
+```
+
+Each text item has 2rem spacing above and below for readability.
+
+## CSS Variables
+
+The component uses Astro's `define:vars` for dynamic styling:
+
+```astro
+<style define:vars={{ speed, textShadow, textColor }}>
+  .track {
+    animation: scrollUp var(--speed) linear infinite;
+  }
+  
+  span {
+    color: var(--textColor);
+    text-shadow: var(--textShadow);
+  }
+</style>
+```
+
+## Use Cases
+
+### Portfolio Hero Section
+
+```astro
+<section class="hero relative">
+  <VerticalMarquee 
+    text="DEVELOPER" 
+    side="left"
+    neonGlowColor="#00ffff"
+  />
+  
+  <div class="hero-content z-10">
+    <h1>Welcome to My Portfolio</h1>
+  </div>
+  
+  <VerticalMarquee 
+    text="CREATIVE" 
+    side="right"
+    neonGlowColor="#ff00ff"
+  />
+</section>
+```
+
+### Tech Stack Display
+
+```astro
+<VerticalMarquee 
+  text="REACT • NODE • TYPESCRIPT • ASTRO" 
+  side="left"
+  speed="90s"
+/>
+```
+
+### Brand Keywords
+
+```astro
+<VerticalMarquee 
+  text="INNOVATIVE • MODERN • RESPONSIVE" 
+  side="right"
+  speed="100s"
+  neonGlowColor="#ffd700"
+/>
+```
+
+## Performance
+
+### Hardware Acceleration
+
+The component uses `transform` for animations, which triggers GPU acceleration:
+
+```css
+transform: translateY(-50%);
+```
+
+### Efficient Rendering
+
+- Fixed positioning reduces layout calculations
+- CSS animations run on the compositor thread
+- Text duplication happens once at build time
+
+## Browser Compatibility
+
+### CSS Features Used
+
+- CSS Custom Properties (variables)
+- Flexbox
+- CSS Animations
+- Writing Mode
+- Multiple text-shadow
+
+Supported in all modern browsers:
+- Chrome 49+
+- Firefox 31+
+- Safari 9.1+
+- Edge 15+
+
+## Customization Examples
+
+### Horizontal Marquee Variant
+
+While not built-in, you could adapt the pattern:
+
+```css
+/* Change flex-direction and animation */
+.track {
+  flex-direction: row;
+  animation: scrollLeft var(--speed) linear infinite;
+}
+
+@keyframes scrollLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+```
+
+### Custom Font
+
+```astro
+<VerticalMarquee text="CUSTOM" side="left" />
+
+<style is:global>
+  .writing-vertical {
+    font-family: 'Your Custom Font', monospace;
+  }
+</style>
+```

@@ -1,0 +1,311 @@
+---
+title: Deployment
+description: Deploy your Jowy Portfolio to Vercel with proper environment variable configuration and build optimization.
+---
+
+The Jowy Portfolio is optimized for deployment on Vercel, which provides seamless integration with Astro, automatic HTTPS, and global CDN distribution.
+
+## Why Vercel?
+
+Vercel is the recommended platform for deploying your portfolio because:
+
+- **Zero Configuration**: Automatically detects Astro projects
+- **Instant Deployments**: Changes go live in seconds
+- **Global CDN**: Fast loading times worldwide
+- **Free SSL**: Automatic HTTPS certificates
+- **Environment Variables**: Secure credential management
+- **Deploy Hooks**: Enable scheduled rebuilds for fresh content
+
+## Prerequisites
+
+Before deploying, ensure you have:
+
+<Steps>
+  <Step title="Completed API Setup">
+    All API credentials configured in your `.env` file. See the [API Setup guide](/guides/api-setup) for details.
+  </Step>
+
+  <Step title="Git Repository">
+    Your code pushed to a Git repository (GitHub, GitLab, or Bitbucket).
+    
+    ```bash
+    git init
+    git add .
+    git commit -m "Initial commit"
+    git remote add origin https://github.com/yourusername/jowy-portfolio.git
+    git push -u origin main
+    ```
+  </Step>
+
+  <Step title="Vercel Account">
+    A free account at [vercel.com](https://vercel.com)
+  </Step>
+</Steps>
+
+## Deploying to Vercel
+
+<Steps>
+  <Step title="Import Your Repository">
+    1. Log in to [Vercel](https://vercel.com)
+    2. Click **Add New...** → **Project**
+    3. Select your Git provider (GitHub, GitLab, or Bitbucket)
+    4. Authorize Vercel to access your repositories
+    5. Select the `jowy-portfolio` repository
+  </Step>
+
+  <Step title="Configure Project Settings">
+    Vercel automatically detects Astro projects, but verify these settings:
+    
+    - **Framework Preset**: Astro
+    - **Build Command**: `astro build` (or `npm run build`)
+    - **Output Directory**: `dist`
+    - **Install Command**: `npm install`
+    
+    <Note>
+      These settings are usually auto-detected from your `package.json`. The build command comes from package.json:7.
+    </Note>
+  </Step>
+
+  <Step title="Add Environment Variables">
+    This is the most critical step. Add all your API credentials:
+    
+    1. In the Vercel project settings, scroll to **Environment Variables**
+    2. Add each variable from your `.env` file:
+    
+    | Variable | Description |
+    |----------|-------------|
+    | `SPOTIFY_CLIENT_ID` | Your Spotify app client ID |
+    | `SPOTIFY_CLIENT_SECRET` | Your Spotify app client secret |
+    | `SPOTIFY_ARTIST_ID` | Your Spotify artist ID |
+    | `SOUNDCLOUD_CLIENT_ID` | Your SoundCloud app client ID |
+    | `SOUNDCLOUD_CLIENT_SECRET` | Your SoundCloud app client secret |
+    | `SOUNDCLOUD_AUTHORIZATION` | Your SoundCloud OAuth token |
+    | `SOUNDCLOUD_USER_ID` | Your SoundCloud user ID (numeric) |
+    | `YOUTUBE_API_KEY` | Your YouTube Data API key |
+    | `YOUTUBE_PLAYLIST_SET_ID` | Your YouTube playlist or channel ID |
+    | `GOOGLE_CALENDAR_SRC` | Your public Google Calendar ID |
+    
+    <Warning>
+      Make sure to select **All** (Production, Preview, and Development) for the environment dropdown unless you have different credentials for different environments.
+    </Warning>
+  </Step>
+
+  <Step title="Deploy">
+    Click **Deploy** and wait for the build to complete (usually 1-2 minutes).
+    
+    Vercel will:
+    1. Clone your repository
+    2. Install dependencies (`npm install`)
+    3. Run the build command (`astro build`)
+    4. Deploy the static files to their CDN
+    5. Assign you a production URL
+  </Step>
+</Steps>
+
+## Custom Domain Setup
+
+To use your own domain instead of the Vercel-provided URL:
+
+<Steps>
+  <Step title="Add Domain in Vercel">
+    1. Go to your project's **Settings** → **Domains**
+    2. Enter your domain (e.g., `jowysound.com`)
+    3. Click **Add**
+  </Step>
+
+  <Step title="Configure DNS">
+    Vercel will provide DNS records to add to your domain registrar:
+    
+    **For root domain** (`jowysound.com`):
+    - Type: `A`
+    - Name: `@`
+    - Value: `76.76.21.21`
+    
+    **For www subdomain** (`www.jowysound.com`):
+    - Type: `CNAME`
+    - Name: `www`
+    - Value: `cname.vercel-dns.com`
+    
+    <Note>
+      DNS propagation can take up to 48 hours, but usually completes within minutes.
+    </Note>
+  </Step>
+
+  <Step title="Update Astro Config">
+    Update the `site` field in `astro.config.mjs` to match your custom domain:
+    
+    ```js
+    export default defineConfig({
+      site: "https://jowysound.com", // Update this
+      // ... rest of config
+    });
+    ```
+    
+    Commit and push this change to trigger a new deployment.
+  </Step>
+</Steps>
+
+## Deployment Configuration
+
+The portfolio includes several optimizations for production:
+
+### Build Optimizations
+
+Configured in `astro.config.mjs`:
+
+- **Sitemap Generation**: Automatically creates `sitemap.xml` for SEO (astro.config.mjs:19)
+- **Asset Compression**: Minifies HTML, CSS, and JS (astro.config.mjs:19)
+- **Image Optimization**: Uses Sharp for responsive images (package.json:23)
+
+### Analytics Integration
+
+The portfolio includes:
+
+- **Vercel Analytics**: User engagement tracking (package.json:14)
+- **Vercel Speed Insights**: Performance monitoring (package.json:15)
+
+These are automatically enabled when deployed to Vercel. No additional configuration needed.
+
+### Caching Strategy
+
+The server-side cache system (`src/server/services/cache.ts`) optimizes API calls:
+
+- **Token Caching**: Spotify and SoundCloud tokens are cached for ~1 hour
+- **Response Caching**: API responses are cached to respect rate limits
+- **Build-time Fetching**: Content is fetched during build, not on every page load
+
+<Note>
+  The in-memory cache resets with each build. This is intentional to ensure fresh content during weekly rebuilds.
+</Note>
+
+## Verifying Your Deployment
+
+<Steps>
+  <Step title="Check Build Logs">
+    In the Vercel dashboard, click on your deployment to view detailed logs. Look for:
+    
+    - Successful dependency installation
+    - No errors during `astro build`
+    - Confirmation of static file generation
+  </Step>
+
+  <Step title="Test API Integrations">
+    Visit your deployed site and verify:
+    
+    - Spotify tracks load correctly
+    - SoundCloud content appears
+    - YouTube videos display
+    - Calendar events are visible
+    
+    If content is missing, check the Vercel function logs for API errors.
+  </Step>
+
+  <Step title="Performance Check">
+    Run a Lighthouse audit or use Vercel Speed Insights to ensure:
+    
+    - Performance score > 90
+    - All images are optimized
+    - No console errors in browser DevTools
+  </Step>
+</Steps>
+
+## Troubleshooting Common Issues
+
+### Build Fails
+
+**Error**: `Missing environment variables`
+
+**Solution**: Double-check all environment variables are added in Vercel settings with correct names (case-sensitive).
+
+---
+
+**Error**: `Command "astro build" exited with 1`
+
+**Solution**: Run `npm run build` locally to reproduce the error. Check for:
+- TypeScript errors
+- Missing dependencies
+- Syntax errors in `.astro` files
+
+---
+
+### API Content Not Loading
+
+**Error**: Spotify/SoundCloud/YouTube sections are empty
+
+**Solution**:
+1. Check Vercel function logs for API authentication errors
+2. Verify environment variables are correctly set
+3. Ensure API credentials haven't expired
+4. Check API quotas haven't been exceeded
+
+---
+
+### Domain Not Working
+
+**Error**: Domain shows "This site can't be reached"
+
+**Solution**:
+1. Verify DNS records are correct in your registrar
+2. Wait for DNS propagation (can take up to 48 hours)
+3. Use [DNS Checker](https://dnschecker.org/) to verify propagation
+
+## Alternative Deployment Platforms
+
+While Vercel is recommended, you can also deploy to:
+
+### Netlify
+
+1. Connect your Git repository to Netlify
+2. Set build command: `npm run build`
+3. Set publish directory: `dist`
+4. Add environment variables in Netlify dashboard
+
+### Cloudflare Pages
+
+1. Connect repository to Cloudflare Pages
+2. Framework preset: Astro
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Add environment variables in Pages settings
+
+### Self-Hosted
+
+For self-hosting on a VPS:
+
+```bash
+# Build locally
+npm run build
+
+# Upload dist/ folder to your server
+scp -r dist/ user@yourserver.com:/var/www/html/
+
+# Configure Nginx or Apache to serve static files
+```
+
+<Warning>
+  Self-hosting requires manual SSL certificate setup, CDN configuration, and server maintenance. Vercel handles all of this automatically.
+</Warning>
+
+## Deployment Checklist
+
+Before going live, verify:
+
+- [ ] All environment variables are set in Vercel
+- [ ] Build completes successfully without errors
+- [ ] All API integrations are loading content
+- [ ] Custom domain is configured (if applicable)
+- [ ] SSL certificate is active (automatic on Vercel)
+- [ ] Analytics are tracking (check Vercel Analytics dashboard)
+- [ ] Lighthouse performance score is acceptable
+- [ ] Site is responsive on mobile devices
+- [ ] All links work correctly
+- [ ] Social media meta tags are correct
+
+## Next Steps
+
+Now that your portfolio is live:
+
+- [Set up automated weekly rebuilds](/guides/ci-cd) to keep content fresh
+- Monitor Vercel Analytics to understand your audience
+- Consider setting up a custom 404 page
+- Optimize images for even better performance

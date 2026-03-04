@@ -1,0 +1,330 @@
+---
+title: "TailwindCSS Configuration"
+description: "Explore the TailwindCSS setup, DaisyUI integration, and custom utility classes for advanced styling"
+---
+
+## Overview
+
+Jowy Portfolio uses TailwindCSS v4 with the new `@import` syntax and DaisyUI for component styling. The configuration leverages custom utilities for advanced visual effects like gradient masks and neon glows.
+
+## Tailwind Configuration
+
+The `tailwind.config.mjs` file uses a minimal configuration with Flowbite plugin:
+
+```javascript
+// tailwind.config.mjs
+import flowbite from "flowbite/plugin";
+
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}",
+    "./node_modules/flowbite/**/*.js",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [flowbite],
+};
+```
+
+<Note>
+This is the legacy config. The actual styling power comes from the new `@import` syntax in `global.css`.
+</Note>
+
+## Global CSS Setup
+
+The `src/styles/global.css` file imports Tailwind v4 and DaisyUI:
+
+```css
+/* Import custom font */
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400..800&display=swap");
+
+/* TailwindCSS v4 */
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* Apply font globally */
+html,
+body {
+  font-family: "Syne", sans-serif;
+}
+```
+
+<Accordion title="Why Syne font?">
+  The **Syne** font family provides a modern, artistic style that's ideal for electronic/house music portfolios. Its bold weight range (400-800) allows for strong visual hierarchy.
+</Accordion>
+
+## Custom Theme Variables
+
+```css
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: #f7a009;
+  --color-primary-dark: #000000;
+  --color-text: #000000;
+  --color-text-dark: #ffffff;
+}
+```
+
+These variables are accessible in Tailwind classes:
+- `bg-primary` → `#f7a009`
+- `bg-primary-dark` → `#000000`
+- `text-text-dark` → `#ffffff`
+
+## Custom Gradient Mask Utilities
+
+The portfolio includes powerful custom utilities for creating gradient fade effects:
+
+### Fade Top + Bottom + Left
+
+```css
+@utility mask-fade-top-bottom-left {
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 0%,
+      black 60%,
+      transparent 100%
+    ),
+    linear-gradient(to right, transparent 0%, black 5%);
+  -webkit-mask-composite: intersect;
+  mask-composite: intersect;
+}
+```
+
+<Tabs>
+  <Tab title="Usage">
+    ```html
+    <div class="mask-fade-top-bottom-left">
+      <!-- Content fades at top, bottom, and left edges -->
+    </div>
+    ```
+  </Tab>
+  <Tab title="Visual Example">
+    Perfect for scroll areas where you want to indicate "more content" in multiple directions
+  </Tab>
+</Tabs>
+
+### Fade Top + Bottom + Right
+
+```css
+@utility mask-fade-top-bottom-right {
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 0%,
+      black 60%,
+      transparent 100%
+    ),
+    linear-gradient(to left, transparent 0%, black 5%);
+  -webkit-mask-composite: intersect;
+  mask-composite: intersect;
+}
+```
+
+### Fade All Sides
+
+```css
+@utility mask-fade-all-sides {
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 0%,
+      black 60%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to right,
+      transparent 0%,
+      black 1%,
+      black 99%,
+      transparent 100%
+    );
+  -webkit-mask-composite: intersect;
+  mask-composite: intersect;
+}
+```
+
+<CardGroup cols={3}>
+  <Card title="Left Fade" icon="arrow-left">
+    `mask-fade-top-bottom-left`
+  </Card>
+  <Card title="Right Fade" icon="arrow-right">
+    `mask-fade-top-bottom-right`
+  </Card>
+  <Card title="All Sides" icon="expand">
+    `mask-fade-all-sides`
+  </Card>
+</CardGroup>
+
+### Diagonal Fade with Side Masking
+
+An advanced utility for creating diagonal fades with customizable side fading:
+
+```css
+.mask-fade-diagonal {
+  /* Control the width of side fades */
+  --side-fade-width: 30%;
+
+  mask-image:
+    /* Bottom fade */
+    linear-gradient(to bottom, transparent 0%, black 90%),
+    /* Left fade */
+    linear-gradient(to right, transparent 0%, black var(--side-fade-width)),
+    /* Right fade */
+    linear-gradient(to left, transparent 0%, black var(--side-fade-width));
+
+  -webkit-mask-composite: destination-in;
+  mask-composite: intersect;
+}
+```
+
+<Note>
+  The `--side-fade-width` CSS variable allows you to adjust the fade distance dynamically. Set it inline: `style="--side-fade-width: 20%"`
+</Note>
+
+## Neon Glow Effect
+
+Create striking neon text effects with the `.neon-style` class:
+
+```css
+.neon-style {
+  color: var(--neon-glow-color, #ffffff);
+  text-shadow:
+    0 0 5px var(--neon-glow-color, #ffffff),
+    0 0 8px var(--neon-glow-color, #ffffff),
+    0 0 15px var(--neon-glow-color, #ffffff),
+    0 0 25px var(--neon-glow-color, #ffffff);
+}
+```
+
+### Usage with Dynamic Colors
+
+```html
+<body style="--neon-glow-color: #f7a009;">
+  <h1 class="neon-style">Glowing Text</h1>
+</body>
+```
+
+The neon color is set dynamically per page:
+
+```astro
+<BaseLayout
+  title="DJ"
+  neonGlowColor="#00ff88"
+>
+  <!-- Page content with green neon effects -->
+</BaseLayout>
+```
+
+<Tabs>
+  <Tab title="DJ Page">
+    ```typescript
+    neonGlowColor: "#00ff88" // Green
+    ```
+  </Tab>
+  <Tab title="Producer Page">
+    ```typescript
+    neonGlowColor: "#ff0066" // Pink
+    ```
+  </Tab>
+  <Tab title="Sound Page">
+    ```typescript
+    neonGlowColor: "#f7a009" // Orange
+    ```
+  </Tab>
+</Tabs>
+
+## Scrollbar Styling
+
+Custom scrollbar with dark mode support using Tailwind's arbitrary variants:
+
+```html
+<body
+  class="[&::-webkit-scrollbar]:w-2
+         [&::-webkit-scrollbar-thumb]:rounded-full
+         [&::-webkit-scrollbar-thumb]:bg-gray-300
+         dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500
+         [&::-webkit-scrollbar-track]:m-2
+         [&::-webkit-scrollbar-track]:rounded-full
+         [&::-webkit-scrollbar-track]:bg-gray-100
+         dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+>
+```
+
+<Steps>
+  <Step title="Set scrollbar width">
+    `[&::-webkit-scrollbar]:w-2` creates a slim 8px scrollbar
+  </Step>
+  <Step title="Style the thumb">
+    Round corners and set colors for light/dark modes
+  </Step>
+  <Step title="Style the track">
+    Add margin and background colors
+  </Step>
+</Steps>
+
+## DaisyUI Integration
+
+DaisyUI is loaded as a Tailwind plugin:
+
+```css
+@plugin "daisyui";
+```
+
+### Available Components
+
+The portfolio uses DaisyUI components like:
+- Modal dialogs
+- Cards
+- Buttons
+- Form elements
+
+### Theme Switching
+
+DaisyUI themes are controlled via the `data-theme` attribute:
+
+```javascript
+document.documentElement.setAttribute(
+  "data-theme",
+  theme === "dark" ? "github-dark-default" : "github-light-default"
+);
+```
+
+## Package Dependencies
+
+```json
+{
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "tailwindcss": "^4.1.17",
+    "daisyui": "^5.5.5"
+  }
+}
+```
+
+<Note>
+The project uses TailwindCSS v4 with the new Vite plugin for improved performance and better developer experience.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Custom Utilities" icon="paintbrush">
+    Define reusable effects like masks and glows as `@utility` declarations
+  </Card>
+  <Card title="CSS Variables for Dynamic Values" icon="sliders">
+    Use CSS custom properties for values that change per page or component
+  </Card>
+  <Card title="Arbitrary Variants" icon="brackets-curly">
+    Leverage `[&::pseudo]:class` syntax for one-off pseudo-element styling
+  </Card>
+  <Card title="DaisyUI for Components" icon="puzzle-piece">
+    Use DaisyUI components for consistent UI patterns
+  </Card>
+</CardGroup>

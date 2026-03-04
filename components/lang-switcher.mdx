@@ -1,0 +1,243 @@
+---
+title: LangSwitcher
+description: Internationalization language toggle component for switching between English and Spanish
+---
+
+## Overview
+
+The `LangSwitcher` component provides a simple toggle for switching between the English and Spanish versions of the Jowy Portfolio. It automatically detects the current language and generates the appropriate URL for the opposite language while preserving the current page path.
+
+## Props
+
+This component receives no explicit props. It uses Astro's built-in i18n context:
+
+- `Astro.url.pathname`: Current page path
+- `Astro.currentLocale`: Current language locale ("en" or "es")
+
+## Component Behavior
+
+### Language Detection
+
+The component automatically:
+1. Reads the current URL path
+2. Removes any existing language prefix (`/en` or `/es`)
+3. Determines the opposite language
+4. Generates the correct URL for the same page in the other language
+
+### URL Normalization
+
+```javascript
+const normalizedPath = currentPath.replace(/^\/(en|es)(\/|$)/, "/");
+```
+
+This regex pattern:
+- Matches `/en` or `/es` at the start of the path
+- Handles both trailing slashes and direct paths
+- Preserves the rest of the URL structure
+
+### Language Toggle Logic
+
+```javascript
+const otherLang = Astro.currentLocale === "es" ? "en" : "es";
+const otherUrl = getRelativeLocaleUrl(otherLang, normalizedPath);
+```
+
+The component uses Astro's `getRelativeLocaleUrl()` helper to generate properly formatted locale URLs.
+
+## Styling
+
+### Visual Design
+
+- **Neon Style**: Applies custom neon text effect via the `neon-style` class
+- **Bold Typography**: Uses bold font weight for emphasis
+- **Hover Animation**: Scales to 125% on hover with smooth 300ms transition
+- **Responsive Text**: Adjusts size based on screen width:
+  - Small screens: `sm:text-sm`
+  - Medium screens: `md:text-base`
+  - Large screens: `lg:text-lg`
+
+### Positioning
+
+When used in layouts, the component is typically positioned:
+- Fixed in the top-right corner
+- High z-index (`z-9999`) to stay above other content
+- Grouped with other navigation icons
+
+## Usage
+
+### Basic Implementation
+
+```astro
+---
+import LangSwitcher from '@/components/LangSwitcher.astro';
+---
+
+<LangSwitcher />
+```
+
+### In PageLayout (Typical Usage)
+
+```astro
+---
+import LangSwitcher from '@/components/LangSwitcher.astro';
+import { defaultLang } from 'i18n.config';
+
+const { lang = defaultLang } = Astro.props;
+---
+
+<div
+  id="nav-icons"
+  class="fixed top-5 right-5 z-9999 flex flex-row justify-center gap-8 pt-[1dvh] align-middle"
+>
+  <LangSwitcher currentLang={lang} />
+</div>
+```
+
+Source: `/home/daytona/workspace/source/src/layouts/PageLayout.astro:48`
+
+### With Other Navigation Elements
+
+```astro
+---
+import LangSwitcher from '@/components/LangSwitcher.astro';
+import ThemeButton from '@/components/ThemeButton.astro';
+---
+
+<nav class="fixed top-5 right-5 z-9999 flex gap-6">
+  <LangSwitcher />
+  <ThemeButton />
+</nav>
+```
+
+## i18n Integration
+
+### Astro i18n Configuration
+
+The component depends on Astro's i18n configuration being set up in `astro.config.mjs`:
+
+```javascript
+export default defineConfig({
+  i18n: {
+    defaultLocale: 'es',
+    locales: ['es', 'en'],
+    routing: {
+      prefixDefaultLocale: false
+    }
+  }
+});
+```
+
+### Language Routing
+
+The component uses `getRelativeLocaleUrl()` from `astro:i18n` to ensure:
+- Proper locale prefixes are added/removed
+- URLs are correctly formatted for both languages
+- Navigation preserves the current page context
+
+### URL Examples
+
+Here's how the component transforms URLs:
+
+<Tabs>
+  <Tab title="From Spanish">
+    - Current: `/bio` (Spanish default, no prefix)
+    - Normalized: `/bio`
+    - Target Language: `en`
+    - Result: `/en/bio`
+  </Tab>
+  <Tab title="From English">
+    - Current: `/en/dj`
+    - Normalized: `/dj`
+    - Target Language: `es`
+    - Result: `/dj` (Spanish is default)
+  </Tab>
+  <Tab title="Nested Paths">
+    - Current: `/en/producer/equipment`
+    - Normalized: `/producer/equipment`
+    - Target Language: `es`
+    - Result: `/producer/equipment`
+  </Tab>
+</Tabs>
+
+## Technical Implementation
+
+### Regex Pattern Breakdown
+
+```javascript
+/^\/(en|es)(\/|$)/
+```
+
+- `^` - Start of string
+- `\/` - Literal forward slash
+- `(en|es)` - Capture either "en" or "es"
+- `(\/|$)` - Match either another slash or end of string
+
+This ensures:
+- Only language prefixes at the start are removed
+- Doesn't affect other parts of the URL
+- Handles both `/en` and `/en/` formats
+
+### Helper Function
+
+The `getRelativeLocaleUrl(locale, path)` function:
+- Takes target locale and normalized path
+- Returns properly formatted locale-aware URL
+- Handles default locale prefix omission
+- Ensures consistent URL structure
+
+## Accessibility
+
+The component is a standard anchor link with:
+- Semantic `<a>` element for proper navigation
+- Visible text label (language code)
+- Keyboard navigable (standard tab order)
+- Clear hover states for visual feedback
+
+### Potential Enhancements
+
+For improved accessibility, consider adding:
+
+```astro
+<a
+  href={otherUrl}
+  aria-label={`Switch to ${otherLang === 'en' ? 'English' : 'Spanish'}`}
+  class="..."
+>
+  <span class="neon-style ...">
+    {otherLang.toUpperCase()}
+  </span>
+</a>
+```
+
+## Customization
+
+### Adding More Languages
+
+To support additional languages, modify the logic:
+
+```astro
+---
+const supportedLocales = ['es', 'en', 'fr', 'de'];
+const currentIndex = supportedLocales.indexOf(Astro.currentLocale);
+const nextIndex = (currentIndex + 1) % supportedLocales.length;
+const nextLang = supportedLocales[nextIndex];
+---
+```
+
+### Custom Styling
+
+Override the neon effect with custom CSS:
+
+```astro
+<style>
+  .neon-style {
+    color: #00ffff;
+    text-shadow: 
+      0 0 5px #00ffff,
+      0 0 10px #00ffff,
+      0 0 20px #00ffff;
+  }
+</style>
+```
+
+Source: `/home/daytona/workspace/source/src/components/LangSwitcher.astro:1`

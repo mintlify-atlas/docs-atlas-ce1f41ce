@@ -1,0 +1,334 @@
+---
+title: "Modal"
+description: "A dialog modal component with trigger button, customizable title, and slotted content. Features automatic backdrop handling and unique ID generation."
+---
+
+The Modal component provides a full-featured dialog interface using the native HTML `<dialog>` element. It includes a trigger button, modal container, close functionality, and automatic unique ID generation for multiple modal instances.
+
+## Features
+
+- **Native Dialog Element**: Built on HTML5 `<dialog>` for proper semantics and accessibility
+- **Unique ID Generation**: Uses Node.js `crypto` to generate unique modal IDs
+- **Trigger Button**: Styled button to open the modal
+- **Backdrop Click**: Close modal by clicking outside the content area
+- **Close Button**: X button positioned in top-right corner
+- **Responsive Design**: Bottom-sheet on mobile, centered on desktop
+- **Slotted Content**: Flexible content area using Astro slots
+
+## Usage
+
+### Basic Implementation
+
+```astro
+---
+import Modal from '@/components/Modal.astro';
+---
+
+<Modal buttonTitle="Open Modal">
+  <p>This is the modal content.</p>
+</Modal>
+```
+
+### With Modal Title
+
+```astro
+---
+import Modal from '@/components/Modal.astro';
+---
+
+<Modal 
+  buttonTitle="View Details" 
+  modalTitle="Project Information"
+>
+  <p>Detailed information about the project...</p>
+  <ul>
+    <li>Feature 1</li>
+    <li>Feature 2</li>
+  </ul>
+</Modal>
+```
+
+### With Rich Content
+
+```astro
+---
+import Modal from '@/components/Modal.astro';
+import { Image } from 'astro:assets';
+import projectImage from '@/assets/project.jpg';
+---
+
+<Modal 
+  buttonTitle="See More" 
+  modalTitle="Gallery"
+>
+  <Image src={projectImage} alt="Project screenshot" />
+  <h3>Project Name</h3>
+  <p>Description of the project with more details...</p>
+</Modal>
+```
+
+## Props
+
+<ParamField path="buttonTitle" type="string" required>
+  The text displayed on the trigger button that opens the modal.
+</ParamField>
+
+<ParamField path="modalTitle" type="string" default="''">
+  Optional title displayed at the top of the modal. If not provided, no title heading is rendered.
+</ParamField>
+
+<ParamField path="slot" type="HTMLElement">
+  The content to display inside the modal body. Accepts any valid Astro/HTML content.
+</ParamField>
+
+## Component Structure
+
+### Generated HTML
+
+```html
+<!-- Trigger Button -->
+<button data-open-modal="modal_[uuid]">
+  Open Modal
+</button>
+
+<!-- Dialog Modal -->
+<dialog id="modal_[uuid]" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box">
+    <h1 class="text-lg font-bold mb-5">Modal Title</h1>
+    <!-- Slotted content here -->
+    <div class="modal-action">
+      <button data-close-modal="modal_[uuid]">X</button>
+    </div>
+  </div>
+  <div class="modal-backdrop" data-close-modal="modal_[uuid]"></div>
+</dialog>
+```
+
+## Styling
+
+### Trigger Button Classes
+
+```css
+.btn {
+  /* Base button styling from DaisyUI */
+}
+
+bg-white text-black font-bold
+hover:scale-125
+transition-all duration-300
+z-10 relative
+```
+
+### Modal Classes
+
+The modal uses DaisyUI utility classes:
+
+<Tabs>
+  <Tab title="Mobile">
+    ```css
+    .modal-bottom {
+      /* Positions modal at bottom of screen */
+      /* Slides up animation */
+    }
+    ```
+  </Tab>
+  <Tab title="Desktop">
+    ```css
+    @media (min-width: 640px) {
+      .sm:modal-middle {
+        /* Centers modal vertically and horizontally */
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Modal Box Styling
+
+```css
+.modal-box {
+  background: white;
+  color: black;
+  /* Rounded corners and padding from DaisyUI */
+}
+```
+
+### Close Button
+
+```css
+.btn-circle .btn-ghost .btn-sm {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+```
+
+## Behavior
+
+### Opening the Modal
+
+The modal opens when the trigger button is clicked:
+
+```javascript
+openButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const modalId = button.getAttribute("data-open-modal");
+    const modal = document.getElementById(modalId);
+    modal?.showModal();
+  });
+});
+```
+
+### Closing the Modal
+
+The modal can be closed in two ways:
+
+1. **Close Button**: Clicking the X button
+2. **Backdrop Click**: Clicking outside the modal content
+
+```javascript
+closeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const modalId = button.getAttribute("data-close-modal");
+    const modal = document.getElementById(modalId);
+    modal?.close();
+  });
+});
+```
+
+### Unique ID Generation
+
+Each modal instance receives a unique ID:
+
+```javascript
+import { randomUUID } from "node:crypto";
+
+const modalId = `modal_${randomUUID()}`;
+```
+
+<Note>
+  This allows multiple modal instances on the same page without ID conflicts.
+</Note>
+
+## Accessibility
+
+### Semantic HTML
+
+The component uses the native `<dialog>` element which provides:
+- Proper focus management
+- Keyboard support (ESC to close)
+- Screen reader announcements
+
+### ARIA Labels
+
+```astro
+{modalTitle && <h1 aria-label={modalTitle}>{modalTitle}</h1>}
+```
+
+### Focus Trapping
+
+The native `<dialog>` element automatically:
+- Traps focus within the modal when open
+- Returns focus to the trigger button when closed
+- Supports ESC key to close
+
+## Data Attributes
+
+The component uses data attributes for JavaScript targeting:
+
+<ParamField path="data-open-modal" type="string">
+  Applied to the trigger button. Contains the target modal's unique ID.
+</ParamField>
+
+<ParamField path="data-close-modal" type="string">
+  Applied to close button and backdrop. Contains the modal's unique ID to close.
+</ParamField>
+
+## Astro Integration
+
+### Page Load Event
+
+The modal script reinitializes on Astro page transitions:
+
+```javascript
+document.addEventListener("astro:page-load", () => {
+  // Modal initialization code
+});
+```
+
+<Note>
+  This ensures modals work correctly with Astro's View Transitions API.
+</Note>
+
+## Multiple Modals
+
+You can have multiple modals on the same page:
+
+```astro
+<Modal buttonTitle="Modal 1" modalTitle="First Modal">
+  <p>Content for modal 1</p>
+</Modal>
+
+<Modal buttonTitle="Modal 2" modalTitle="Second Modal">
+  <p>Content for modal 2</p>
+</Modal>
+
+<Modal buttonTitle="Modal 3">
+  <p>Modal without a title</p>
+</Modal>
+```
+
+Each modal receives a unique UUID, preventing conflicts.
+
+## Customization
+
+### Custom Button Styling
+
+The trigger button can be styled by overriding default classes. Since it's part of the component, you might want to create a wrapper or variant:
+
+```astro
+---
+// Create a custom variant by wrapping the component
+---
+
+<div class="custom-modal-wrapper">
+  <Modal buttonTitle="Custom">
+    <p>Content</p>
+  </Modal>
+</div>
+
+<style>
+  .custom-modal-wrapper :global(button) {
+    background: blue;
+    /* Custom styles */
+  }
+</style>
+```
+
+### Custom Modal Content
+
+Use the slot to add any content:
+
+```astro
+<Modal buttonTitle="Form Modal" modalTitle="Contact">
+  <form>
+    <input type="text" placeholder="Name" />
+    <input type="email" placeholder="Email" />
+    <button type="submit">Submit</button>
+  </form>
+</Modal>
+```
+
+## Browser Compatibility
+
+### Native Dialog Support
+
+The `<dialog>` element is supported in:
+- Chrome 37+
+- Firefox 98+
+- Safari 15.4+
+- Edge 79+
+
+<Note>
+  For older browsers, consider using a polyfill like `dialog-polyfill`.
+</Note>

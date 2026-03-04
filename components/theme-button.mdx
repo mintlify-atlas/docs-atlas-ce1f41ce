@@ -1,0 +1,380 @@
+---
+title: "Theme Button"
+description: "A theme switcher button component that toggles between light and dark modes with smooth icon transitions and persistent theme storage."
+---
+
+The ThemeButton component provides an elegant theme switching interface with animated icon transitions. It integrates with a theme management system to toggle between light and dark modes while persisting user preferences.
+
+## Features
+
+- **Theme Toggle**: Switches between light and dark themes
+- **Animated Transitions**: Smooth opacity fade when changing icons
+- **Persistent Storage**: Remembers user theme preference
+- **Customizable Position**: Flexible className prop for positioning
+- **Hover Effects**: Scale animation on hover
+- **High Priority Loading**: Eager loading to prevent theme flash
+- **SVG Icons**: Optimized vector graphics for crisp display
+
+## Usage
+
+### Basic Implementation
+
+```astro
+---
+import ThemeButton from '@/components/ThemeButton.astro';
+---
+
+<ThemeButton />
+```
+
+### Custom Positioning
+
+```astro
+---
+import ThemeButton from '@/components/ThemeButton.astro';
+---
+
+<!-- Top left corner -->
+<ThemeButton className="fixed top-3 left-3 rounded p-2" />
+
+<!-- Bottom right corner -->
+<ThemeButton className="fixed bottom-5 right-5 rounded-full p-3" />
+
+<!-- Inline with navigation -->
+<nav>
+  <ThemeButton className="relative inline-block" />
+</nav>
+```
+
+## Props
+
+<ParamField path="className" type="string" default="fixed top-3 right-3 cursor-pointer rounded p-2">
+  Custom CSS classes for positioning and styling the theme button. The default positions the button in the top-right corner of the viewport.
+</ParamField>
+
+## Component Structure
+
+### HTML Output
+
+```html
+<button 
+  id="theme-toggle" 
+  class="fixed top-3 right-3 cursor-pointer rounded p-2 transition duration-300 ease-in-out hover:scale-120 z-9999"
+>
+  <img 
+    id="theme-toggle-icon"
+    alt="Dark Icon"
+    src="/path/to/icon.svg"
+    class="h-[2vw] max-h-6 min-h-5 w-auto transition-opacity duration-500 ease-in-out"
+    loading="eager"
+  />
+</button>
+```
+
+## Styling
+
+### Button Classes
+
+The button includes built-in transition and hover effects:
+
+```css
+transition duration-300 ease-in-out
+hover:scale-120
+z-9999
+```
+
+### Icon Sizing
+
+The icon uses responsive sizing with constraints:
+
+```css
+/* Responsive size based on viewport */
+h-[2vw]
+
+/* Maximum size cap */
+max-h-6
+
+/* Minimum size floor */
+min-h-5
+
+/* Maintain aspect ratio */
+w-auto
+```
+
+### Icon Transition
+
+```css
+transition-opacity duration-500 ease-in-out
+```
+
+<Note>
+  The 500ms opacity transition creates a smooth fade effect when switching theme icons.
+</Note>
+
+## Theme Management
+
+### Theme System Integration
+
+The component integrates with a centralized theme management system:
+
+```javascript
+import { THEME_ICONS, getCurrentTheme, updateTheme } from "@/theme/theme"
+```
+
+### Functions Used
+
+<ParamField path="getCurrentTheme()" type="() => 'light' | 'dark'">
+  Returns the current active theme from storage or system preference.
+</ParamField>
+
+<ParamField path="updateTheme(theme)" type="(theme: string) => void">
+  Updates the theme in storage and applies it to the document.
+</ParamField>
+
+<ParamField path="THEME_ICONS" type="Record<string, ImageMetadata>">
+  Object containing icon assets for each theme.
+</ParamField>
+
+## Behavior
+
+### Initialization
+
+On component mount, the button displays the correct icon for the current theme:
+
+```javascript
+const icon = document.getElementById("theme-toggle-icon");
+icon.src = THEME_ICONS[getCurrentTheme()].src;
+```
+
+### Theme Toggle Animation
+
+When clicked, the button performs a smooth transition:
+
+```javascript
+toggleButton.addEventListener("click", () => {
+  // 1. Fade out current icon
+  icon.style.opacity = "0";
+
+  // 2. Determine new theme
+  const currentTheme = getCurrentTheme() === "dark" ? "light" : "dark";
+  
+  // 3. Update theme in system
+  updateTheme(currentTheme);
+
+  // 4. After 200ms, swap icon and fade in
+  setTimeout(() => {
+    icon.src = THEME_ICONS[currentTheme].src;
+    icon.alt = currentTheme + " theme icon";
+    icon.style.opacity = "1";
+  }, 200);
+});
+```
+
+### Animation Timeline
+
+<Steps>
+  <Step title="Fade Out (0-200ms)">
+    Current icon opacity transitions to 0
+  </Step>
+  <Step title="Swap Icon (200ms)">
+    Icon source changes to new theme icon
+  </Step>
+  <Step title="Fade In (200-700ms)">
+    New icon opacity transitions to 1 over 500ms
+  </Step>
+</Steps>
+
+## Image Optimization
+
+The component uses Astro's Image component for optimization:
+
+```astro
+import { Image } from "astro:assets";
+```
+
+### Image Props
+
+<ParamField path="loading" type="'eager'">
+  Loads the image immediately to prevent theme flash on page load.
+</ParamField>
+
+<ParamField path="fetchpriority" type="'high'">
+  Prioritizes loading of the theme icon for better user experience.
+</ParamField>
+
+<ParamField path="format" type="'svg'">
+  Uses SVG format for crisp, scalable icons at any size.
+</ParamField>
+
+## Accessibility
+
+### Alt Text
+
+The icon includes descriptive alt text that updates with the theme:
+
+```javascript
+icon.alt = currentTheme + " theme icon";
+```
+
+### Button Semantics
+
+The button is properly labeled with:
+- Semantic `<button>` element
+- Unique `id` for JavaScript targeting
+- Descriptive icon alt text
+
+### Keyboard Support
+
+As a native button element, it supports:
+- Enter key activation
+- Space key activation
+- Focus states
+
+## Z-Index Management
+
+The button uses a high z-index to stay above other content:
+
+```css
+z-9999
+```
+
+<Note>
+  Ensure this z-index value doesn't conflict with other fixed or sticky elements in your layout.
+</Note>
+
+## Positioning Examples
+
+### Fixed Positions
+
+<Tabs>
+  <Tab title="Top Right (Default)">
+    ```astro
+    <ThemeButton className="fixed top-3 right-3 rounded p-2" />
+    ```
+  </Tab>
+  <Tab title="Top Left">
+    ```astro
+    <ThemeButton className="fixed top-3 left-3 rounded p-2" />
+    ```
+  </Tab>
+  <Tab title="Bottom Right">
+    ```astro
+    <ThemeButton className="fixed bottom-5 right-5 rounded p-2" />
+    ```
+  </Tab>
+  <Tab title="Bottom Left">
+    ```astro
+    <ThemeButton className="fixed bottom-5 left-5 rounded p-2" />
+    ```
+  </Tab>
+</Tabs>
+
+### Relative Positioning
+
+```astro
+<!-- Inside a header component -->
+<header class="flex justify-between items-center p-4">
+  <Logo />
+  <nav>
+    <NavLinks />
+    <ThemeButton className="relative inline-block ml-4" />
+  </nav>
+</header>
+```
+
+## Theme System Requirements
+
+This component requires a theme management system at `@/theme/theme` with:
+
+### Required Exports
+
+```typescript
+// Current theme getter
+export function getCurrentTheme(): 'light' | 'dark';
+
+// Theme updater
+export function updateTheme(theme: 'light' | 'dark'): void;
+
+// Icon mappings
+export const THEME_ICONS: {
+  light: ImageMetadata;
+  dark: ImageMetadata;
+};
+```
+
+### Example Theme Module
+
+```typescript
+// src/theme/theme.ts
+import lightIcon from '@/assets/icons/light.svg';
+import darkIcon from '@/assets/icons/dark.svg';
+
+export const THEME_ICONS = {
+  light: lightIcon,
+  dark: darkIcon
+};
+
+export function getCurrentTheme() {
+  return localStorage.getItem('theme') || 'light';
+}
+
+export function updateTheme(theme) {
+  localStorage.setItem('theme', theme);
+  document.documentElement.setAttribute('data-theme', theme);
+}
+```
+
+## Performance Considerations
+
+### Eager Loading
+
+The icon is loaded with high priority to prevent:
+- Layout shift
+- Theme flash
+- Icon pop-in
+
+### SVG Format
+
+Using SVG icons provides:
+- Small file size
+- Scalability without quality loss
+- Fast rendering
+- No pixelation at any size
+
+## Customization
+
+### Custom Hover Effects
+
+```astro
+<ThemeButton 
+  className="fixed top-3 right-3 rounded-full p-3 hover:rotate-180 hover:scale-150 transition-all duration-500" 
+/>
+```
+
+### Custom Icon Sizes
+
+```astro
+<ThemeButton className="fixed top-3 right-3 p-2">
+  <!-- Override icon size with CSS -->
+</ThemeButton>
+
+<style>
+  #theme-toggle-icon {
+    height: 32px;
+    width: 32px;
+  }
+</style>
+```
+
+### Rounded Variants
+
+```astro
+<!-- Circular button -->
+<ThemeButton className="fixed top-3 right-3 rounded-full p-3" />
+
+<!-- Square button -->
+<ThemeButton className="fixed top-3 right-3 rounded-none p-2" />
+
+<!-- Pill button -->
+<ThemeButton className="fixed top-3 right-3 rounded-full px-4 py-2" />
+```

@@ -1,122 +1,90 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Jowy Portfolio",
+  "theme": "almond",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#fbd45e",
+    "light": "#e8dcb5",
+    "dark": "#e3ece8"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/44538305-f48f-48ac-b0d1-96e1c4cd260e.svg",
+  "logo": {
+    "light": "https://media.brand.dev/44538305-f48f-48ac-b0d1-96e1c4cd260e.svg",
+    "dark": "https://media.brand.dev/44538305-f48f-48ac-b0d1-96e1c4cd260e.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/mrcl29/jowy-portfolio"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/mrcl29/jowy-portfolio"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
-            "pages": [
-              "index",
-              "quickstart",
-              "development"
-            ]
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "installation"]
           },
           {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
+            "group": "Core Concepts",
+            "pages": ["architecture/overview", "architecture/project-structure", "architecture/routing"]
           },
           {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
-            ]
+            "group": "Configuration",
+            "pages": ["configuration/environment", "configuration/i18n", "configuration/astro-config"]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Components",
         "groups": [
           {
-            "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
+            "group": "UI Components",
+            "pages": ["components/carousel", "components/modal", "components/theme-button", "components/vertical-marquee"]
           },
           {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
+            "group": "Media Components",
+            "pages": ["components/soundcloud-player", "components/youtube-player", "components/privacy-embed"]
+          },
+          {
+            "group": "Navigation",
+            "pages": ["components/nav-photo", "components/lang-switcher", "components/social-networks"]
+          }
+        ]
+      },
+      {
+        "tab": "API Integration",
+        "groups": [
+          {
+            "group": "Core Systems",
+            "pages": ["api/base-fetcher", "api/caching", "api/error-handling"]
+          },
+          {
+            "group": "Services",
+            "pages": ["api/spotify", "api/soundcloud", "api/youtube"]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": ["guides/api-setup", "guides/deployment", "guides/ci-cd"]
+          },
+          {
+            "group": "Styling",
+            "pages": ["guides/theming", "guides/tailwind", "guides/animations"]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

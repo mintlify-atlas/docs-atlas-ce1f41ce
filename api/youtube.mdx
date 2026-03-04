@@ -1,0 +1,378 @@
+---
+title: "YouTube API Integration"
+description: "Server-side YouTube Data API v3 integration for retrieving playlist items with automatic caching and detailed video metadata"
+---
+
+## Overview
+
+The YouTube service provides server-side integration with YouTube Data API v3 to retrieve playlist items. It uses API key authentication and implements automatic response caching for 1 hour to optimize quota usage.
+
+**Source Location**: `src/server/services/youtube/`
+
+<Note>
+  This service uses YouTube Data API v3 which has daily quota limits. Caching is critical to minimize API calls and conserve quota.
+</Note>
+
+---
+
+## Playlist Methods
+
+### getPlaylist()
+
+Retrieves items from a YouTube playlist with configurable result limits and data parts. Results are cached for 1 hour per unique query.
+
+**Location**: `src/server/services/youtube/playlist.ts:9`
+
+```typescript
+async function getPlaylist(
+  playlistId: string,
+  maxResults = 50,
+  part = "contentDetails,snippet,status"
+): Promise<YouTubePlaylistItemResponse | null>
+```
+
+#### Parameters
+
+<ParamField path="playlistId" type="string" required>
+  YouTube playlist ID (found in playlist URL after `?list=`)
+</ParamField>
+
+<ParamField query="maxResults" type="number" default={50}>
+  Maximum number of playlist items to return (1-50)
+</ParamField>
+
+<ParamField query="part" type="string" default="contentDetails,snippet,status">
+  Comma-separated list of resource parts to include. Available parts:
+  - contentDetails: Video ID and publication date
+  - snippet: Title, description, thumbnails, channel info
+  - status: Privacy status
+  - id: Item ID (always included)
+</ParamField>
+
+<Warning>
+  Each `part` parameter consumes quota units. Only request parts you need:
+  - `snippet`: 2 units
+  - `contentDetails`: 2 units
+  - `status`: 2 units
+</Warning>
+
+#### Returns
+
+<ResponseField name="response" type="YouTubePlaylistItemResponse | null">
+  Complete playlist response object, or `null` if error occurs
+</ResponseField>
+
+#### Response Type: YouTubePlaylistItemResponse
+
+```typescript
+interface YouTubePlaylistItemResponse {
+  kind: "youtube#playlistItemListResponse";  // Resource type
+  etag: string;                               // ETag for caching
+  items: PlaylistItem[];                      // Array of playlist items
+  pageInfo: PageInfo;                         // Pagination metadata
+  // nextPageToken?: string;                  // Token for next page (if applicable)
+}
+
+interface PlaylistItem {
+  kind: "youtube#playlistItem";    // Resource type
+  etag: string;                    // ETag for caching
+  id: string;                      // Playlist item ID
+  snippet: Snippet;                // Video metadata
+  contentDetails: ContentDetails;  // Video ID and publish date
+  status: Status;                  // Privacy status
+}
+
+interface Snippet {
+  publishedAt: string;             // ISO 8601 timestamp
+  channelId: string;               // Channel ID
+  title: string;                   // Video title
+  description: string;             // Video description
+  thumbnails: Thumbnails;          // Thumbnail images (multiple sizes)
+  channelTitle: string;            // Channel name
+  playlistId: string;              // Parent playlist ID
+  position: number;                // Position in playlist (0-indexed)
+  resourceId: ResourceId;          // Video resource identifier
+  videoOwnerChannelTitle: string;  // Video uploader channel name
+  videoOwnerChannelId: string;     // Video uploader channel ID
+}
+
+interface ContentDetails {
+  videoId: string;                 // YouTube video ID
+  videoPublishedAt: string;        // ISO 8601 timestamp
+}
+
+interface Status {
+  privacyStatus: "public" | "unlisted" | "private";  // Video visibility
+}
+
+interface PageInfo {
+  totalResults: number;            // Total items in playlist
+  resultsPerPage: number;          // Items returned in this response
+}
+
+interface Thumbnails {
+  default: Thumbnail;              // 120x90px
+  medium: Thumbnail;               // 320x180px
+  high: Thumbnail;                 // 480x360px
+  standard: Thumbnail;             // 640x480px
+  maxres: Thumbnail;               // 1280x720px (if available)
+}
+
+interface Thumbnail {
+  url: string;                     // Image URL
+  width: number;                   // Image width in pixels
+  height: number;                  // Image height in pixels
+}
+
+interface ResourceId {
+  kind: "youtube#video";           // Resource type
+  videoId: string;                 // YouTube video ID
+}
+```
+
+#### API Endpoint
+
+```
+GET https://www.googleapis.com/youtube/v3/playlistItems
+  ?playlistId={playlistId}
+  &maxResults={maxResults}
+  &part={part}
+  &key={apiKey}
+```
+
+#### Request Headers
+
+<ParamField header="accept" type="string" required>
+  `application/json`
+</ParamField>
+
+#### Example Usage
+
+```typescript
+import { getPlaylist } from '@/server/services/youtube/playlist';
+
+// Basic usage - get first 50 items with default parts
+const playlist = await getPlaylist('PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf');
+
+if (playlist) {
+  console.log(`Total videos: ${playlist.pageInfo.totalResults}`);
+  console.log(`Returned: ${playlist.items.length}`);
+  
+  playlist.items.forEach((item, index) => {
+    console.log(`${index + 1}. ${item.snippet.title}`);
+    console.log(`   Video ID: ${item.contentDetails.videoId}`);
+    console.log(`   Channel: ${item.snippet.channelTitle}`);
+    console.log(`   Privacy: ${item.status.privacyStatus}`);
+    console.log(`   Thumbnail: ${item.snippet.thumbnails.high.url}`);
+  });
+}
+
+// Custom maxResults
+const shortPlaylist = await getPlaylist('PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf', 10);
+
+// Request only specific parts to save quota
+const minimalPlaylist = await getPlaylist(
+  'PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf',
+  50,
+  'contentDetails'
+);
+
+// Access thumbnail variations
+if (playlist && playlist.items.length > 0) {
+  const firstVideo = playlist.items[0];
+  const thumbs = firstVideo.snippet.thumbnails;
+  
+  console.log('Available thumbnails:');
+  console.log(`Default (120x90): ${thumbs.default.url}`);
+  console.log(`Medium (320x180): ${thumbs.medium.url}`);
+  console.log(`High (480x360): ${thumbs.high.url}`);
+  console.log(`Standard (640x480): ${thumbs.standard.url}`);
+  if (thumbs.maxres) {
+    console.log(`Max Res (1280x720): ${thumbs.maxres.url}`);
+  }
+}
+```
+
+#### Building Video URLs
+
+```typescript
+const playlist = await getPlaylist('PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf');
+
+if (playlist) {
+  playlist.items.forEach(item => {
+    const videoId = item.contentDetails.videoId;
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+    
+    console.log(`Watch: ${videoUrl}`);
+    console.log(`Embed: ${embedUrl}`);
+  });
+}
+```
+
+---
+
+## Caching Strategy
+
+### Playlist Caching
+
+<ParamField query="cache_key" type="string">
+  `"youtube_playlist_{playlistId}_maxresults{maxResults}_part{part}"`
+</ParamField>
+
+<ParamField query="duration" type="number">
+  3600 seconds (1 hour)
+</ParamField>
+
+<Info>
+  Each unique combination of `playlistId`, `maxResults`, and `part` parameters is cached separately. This ensures accurate results while maximizing cache hits.
+</Info>
+
+#### Cache Key Examples
+
+```typescript
+// Different cache keys for different queries
+getPlaylist('PLabcd', 50, 'snippet,contentDetails');
+// Cache key: "youtube_playlist_PLabcd_maxresults50_partsnippet,contentDetails"
+
+getPlaylist('PLabcd', 10, 'snippet,contentDetails');
+// Cache key: "youtube_playlist_PLabcd_maxresults10_partsnippet,contentDetails"
+
+getPlaylist('PLabcd', 50, 'snippet');
+// Cache key: "youtube_playlist_PLabcd_maxresults50_partsnippet"
+```
+
+---
+
+## Error Handling
+
+Returns `null` on errors:
+- Invalid playlist ID
+- Playlist is private/deleted
+- API key invalid or quota exceeded
+- Network errors
+- Invalid API responses
+
+```typescript
+const playlist = await getPlaylist('invalid_playlist_id');
+if (!playlist) {
+  console.error('Failed to retrieve playlist');
+  // Check server logs for detailed error message:
+  // "Error al obtener la playlist de YouTube {playlistId}"
+}
+```
+
+### Common Error Scenarios
+
+<Warning>
+  **Quota Exceeded**: YouTube Data API v3 has a default quota of 10,000 units/day. A typical `getPlaylist()` call with all parts costs ~6 units. Caching reduces quota usage significantly.
+</Warning>
+
+| Error | Status Code | Cause | Solution |
+|-------|-------------|-------|----------|
+| `playlistNotFound` | 404 | Invalid playlist ID | Verify playlist ID from URL |
+| `forbidden` | 403 | Private playlist or invalid API key | Check API key and playlist privacy |
+| `quotaExceeded` | 403 | Daily quota limit reached | Wait for quota reset or request increase |
+| `badRequest` | 400 | Invalid parameters | Verify `maxResults` (1-50) and `part` values |
+
+---
+
+## API Quota Usage
+
+### Cost Per Request
+
+<ParamField query="base_cost" type="number">
+  1 unit (base read operation)
+</ParamField>
+
+<ParamField query="snippet" type="number">
+  +2 units
+</ParamField>
+
+<ParamField query="contentDetails" type="number">
+  +2 units
+</ParamField>
+
+<ParamField query="status" type="number">
+  +2 units
+</ParamField>
+
+#### Example Quota Calculations
+
+```typescript
+// Default: part="contentDetails,snippet,status"
+// Cost: 1 (base) + 2 (contentDetails) + 2 (snippet) + 2 (status) = 7 units
+await getPlaylist('PLabc');
+
+// Minimal: part="contentDetails"
+// Cost: 1 (base) + 2 (contentDetails) = 3 units
+await getPlaylist('PLabc', 50, 'contentDetails');
+
+// With caching, subsequent calls = 0 units (within 1 hour)
+await getPlaylist('PLabc');  // 7 units (first call)
+await getPlaylist('PLabc');  // 0 units (from cache)
+```
+
+---
+
+## Environment Variables
+
+<ParamField path="YOUTUBE_API_KEY" type="string" required>
+  YouTube Data API v3 key from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+  
+  **Setup Steps**:
+  1. Create project in Google Cloud Console
+  2. Enable YouTube Data API v3
+  3. Create API key credential
+  4. Restrict key to YouTube Data API v3
+  5. Add key to environment configuration
+</ParamField>
+
+---
+
+## Pagination
+
+<Info>
+  The current implementation returns up to `maxResults` items (max 50). For playlists with more items, you would need to implement pagination using `nextPageToken` from the response.
+</Info>
+
+### Pagination Implementation Example
+
+```typescript
+// Future enhancement for pagination support
+async function getAllPlaylistItems(playlistId: string) {
+  let allItems: PlaylistItem[] = [];
+  let nextPageToken: string | undefined;
+  
+  do {
+    const response = await getPlaylist(playlistId, 50);
+    if (!response) break;
+    
+    allItems = allItems.concat(response.items);
+    nextPageToken = response.nextPageToken;  // Currently not returned
+    
+    // Would need to pass nextPageToken to getPlaylist()
+  } while (nextPageToken);
+  
+  return allItems;
+}
+```
+
+---
+
+## Dependencies
+
+- `@/lib/BaseFetcher` - HTTP request wrapper
+- `@/server/constants` - Environment variable configuration
+- `@/server/services/cache` - Response caching
+- `@/types/youtube/playlist.d` - Type definitions for playlist response
+
+---
+
+## Best Practices
+
+1. **Minimize Quota Usage**: Only request `part` parameters you need
+2. **Leverage Caching**: Identical queries within 1 hour use cached data
+3. **Handle Null Returns**: Always check for `null` before accessing data
+4. **Monitor Quota**: Track daily API usage in Google Cloud Console
+5. **Validate Playlist IDs**: Verify playlist ID format and accessibility before calling API
